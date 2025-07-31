@@ -26,4 +26,4 @@ jobs:
             git pull origin main
             npm install @whiskeysockets/baileys@latest
             npm install
-            pm2 restart aws-v2 || pm2 start index.js --name aws-v2
+            pm2 restart aws-v2 || pm2 start src/index.js --name aws-v2
