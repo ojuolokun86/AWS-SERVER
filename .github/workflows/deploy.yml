@@ -15,14 +15,15 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             sudo apt-get update
             sudo apt-get install -y imagemagick
-            cd ~/BMM-VERSION-2
+            sudo pip3 install speedtest-cli
+            cd ~/AWS-SERVER
             git pull origin main
             npm install @whiskeysockets/baileys@latest
             npm install
-            pm2 restart bmm-v2 || pm2 start index.js --name bmm-v2
+            pm2 restart aws-v2 || pm2 start index.js --name aws-v2
