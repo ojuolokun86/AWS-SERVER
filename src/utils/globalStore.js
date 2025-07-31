@@ -24,7 +24,8 @@ function saveMediaToStore(messageId, buffer, type, caption, deletedBy) {
 }
 
 function getBotInstanceCount() {
-  return botInstances.size;
+  console.log(Object.keys(botInstances).length);
+  return Object.keys(botInstances).length; // or botInstances.size if it's a Map
 }
 
 function getMediaFromStore(messageId) {
