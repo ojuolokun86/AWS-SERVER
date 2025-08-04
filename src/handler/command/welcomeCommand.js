@@ -1,23 +1,29 @@
 const { getWelcomeSettings, setWelcomeEnabled, setGoodbyeEnabled } = require('../../database/welcomeDb');
 const sendToChat = require('../../utils/sendToChat');
-const { checkIfAdmin } = require('./groupCommand');
+const { checkIfAdmin } = require('./kick');
 const menu = (welcome, goodbye) => `
-👋 *Welcome/Goodbye Settings (Group)*
-
-1. Welcome: ${welcome ? '🟢 ON' : '🔴 OFF'}
-2. Goodbye: ${goodbye ? '🟢 ON' : '🔴 OFF'}
-
-Reply with:
-1 to toggle Welcome
-2 to toggle Goodbye
-3 to toggle Welcome and Goodbye
+🤖 [WELCOME/GOODBYE CONFIGURATION]
+────────────────────────────
+[CURRENT STATUS]
+• WELCOME: ${welcome ? '🟢 ENABLED' : '🔴 DISABLED'}
+• GOODBYE: ${goodbye ? '🟢 ENABLED' : '🔴 DISABLED'}
+────────────────────────────
+[INSTRUCTIONS]
+• Reply with:
+  1 → TOGGLE WELCOME
+  2 → TOGGLE GOODBYE
+  3 → TOGGLE BOTH
+────────────────────────────
+[SYSTEM STATUS]: AWAITING USER INPUT...
 `;
+
 
 async function welcomeCommand(sock, msg) {
   const groupId = msg.key.remoteJid;
   const botId = sock.user.id.split(':')[0];
   const senderId = msg.key.participant || msg.participant || msg.key.remoteJid;
   const settings = getWelcomeSettings(groupId, botId);
+  const admin = await checkIfAdmin(sock, groupId, senderId);
 
   if (!msg.key.remoteJid.endsWith('@g.us')) {
     await sendToChat(sock, msg.key.remoteJid, {
@@ -26,7 +32,7 @@ async function welcomeCommand(sock, msg) {
     return;
   }
 
-  if (!(await checkIfAdmin(sock, groupId, senderId))) {
+  if (!admin) {
     await sock.sendMessage(groupId, { text: "❌ Only group admins can use this command." }, { quoted: msg });
     return;
   }

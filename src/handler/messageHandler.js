@@ -7,7 +7,7 @@ const { handleStatusUpdate } = require('./features/statusView');
 const { incrementGroupUserStat } = require('./features/groupStats');
 const globalStore = require('../utils/globalStore');
 const sendToChat = require('../utils/sendToChat');
-async function handleIncomingMessage({ sock, msg, phoneNumber }) {
+async function handleIncomingMessage({ authId, sock, msg, phoneNumber }) {
   let from;
   let botId; 
   try {
@@ -36,12 +36,12 @@ if (msg.key?.remoteJid?.endsWith('@g.us') && msg.key?.participant) {
   await handleStatusUpdate(sock, msg, botId); // Handle status updates
   if (await detectAndAct({ sock, from, msg, textMsg })) return;
   const presenceType =
-  (globalStore.presenceTypeStore[botId] && globalStore.presenceTypeStore[botId])
+  (globalStore.presenceTypeStore[botId] && globalStore.presenceTypeStore[botId] || 'paused');
   await sock.sendPresenceUpdate(presenceType, from);
   // ⚙️ Check for command
   const userPrefix = await getUserPrefix(botId);
   if (textMsg.startsWith(userPrefix)) {
-    await execute({ sock, msg, textMsg, phoneNumber: botPhoneNumber });
+    await execute({ authId, sock, msg, textMsg, phoneNumber: botPhoneNumber });
   }
 }
 catch (err) {

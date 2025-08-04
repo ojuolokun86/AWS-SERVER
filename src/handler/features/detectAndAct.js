@@ -6,18 +6,53 @@ const {
 } = require('../../database/antilinkDb');
 const { markMessageAsBotDeleted } = require('../../utils/botDeletedMessages');
 
-const WA_DEFAULT_LINK_REGEX =  /(https?:\/\/[^\s]+|www\.[^\s]+|wa\.me\/[^\s]+|chat\.whatsapp\.com\/[^\s]+|t\.me\/[^\s]+|bit\.ly\/[^\s]+|[\w-]+\.(com|net|org|info|biz|xyz|live|tv|me|link)(\/\S*)?)/gi;
+const WA_DEFAULT_LINK_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+|wa\.me\/[^\s]+|chat\.whatsapp\.com\/[^\s]+|t\.me\/[^\s]+|bit\.ly\/[^\s]+|[\w-]+\.(com|net|org|info|biz|xyz|live|tv|me|link)(\/\S*)?)/gi;
+
+// ✅ Random warning messages for warn-remove
+const warningMessages = [
+  "⚠️ @user, links are not allowed here. Warning {count}/{limit}. Stop now or face removal!",
+  "🚨 ALERT! @user, no links allowed! This is warning {count}/{limit}. One more and you're out!",
+  "🔒 Security Notice: @user, link detected. Warning {count}/{limit}. Posting links will get you removed.",
+  "❗ @user, links are prohibited. Warning {count}/{limit}. Final warnings lead to a kick.",
+  "⚠️ SYSTEM ALERT: @user, you broke the rules. Warning {count}/{limit}. Respect the rules or you’re out!"
+];
+
+// ✅ Random messages for when user gets removed
+const removalMessages = [
+  "🚫 @user has been removed for repeated link sharing. Rules are rules!",
+  "❌ @user was kicked out after {limit} warnings for posting links.",
+  "🔴 @user violated group rules and is now removed. No links allowed!",
+  "🚫 SECURITY ALERT: @user reached the warning limit and was removed from the group.",
+  "⚠️ @user ignored warnings ({limit}) and is now removed. Follow the rules next time."
+];
+
+// ✅ Random warning messages for warn only
+const simpleWarnMessages = [
+  "⚠️ @user, posting links is not allowed here.",
+  "🚨 ALERT! @user, no links allowed in this group.",
+  "❌ @user, please stop sharing links. It’s against the rules.",
+  "🔒 Security Alert: @user, links are prohibited in this group.",
+  "⚠️ WARNING: @user, do not share links again."
+];
+
+// ✅ Function to pick a random message
+function getRandomMessage(arr, userId, count = null, limit = null) {
+  let msg = arr[Math.floor(Math.random() * arr.length)];
+  msg = msg.replace("@user", `@${userId}`);
+  if (count && limit) {
+    msg = msg.replace("{count}", count).replace("{limit}", limit);
+  }
+  return msg;
+}
 
 async function detectAndAct({ sock, from, msg, textMsg }) {
   const groupId = from;
-  const botJid = sock.user?.id?.split(':')[0]?.split('@')[0]; // 234xxxx
+  const botJid = sock.user?.id?.split(':')[0]?.split('@')[0];
   const settings = getAntilinkSettings(groupId, botJid);
 
-  // ✅ Correctly extract sender from participant (always fallback safe)
   const userJid = msg.key.participant || msg.participant || msg.participantJid || null;
   if (!userJid) return false;
 
-  // ❌ Skip if conditions not met
   if (settings.mode === 'off') return false;
   if (!WA_DEFAULT_LINK_REGEX.test(textMsg)) return false;
   if (userJid.includes(botJid)) return false;
@@ -25,7 +60,6 @@ async function detectAndAct({ sock, from, msg, textMsg }) {
   console.log(`📛 Link detected in group ${groupId} from user ${userJid}`);
   console.log('⚙️ Antilink Settings:', settings);
 
-  // ✅ Check for group admin if bypass enabled
   if (settings.bypassAdmins) {
     const metadata = await sock.groupMetadata(groupId);
     const isAdmin = metadata.participants?.some(
@@ -38,7 +72,6 @@ async function detectAndAct({ sock, from, msg, textMsg }) {
   }
 
   try {
-    // 🗑️ Delete the offending message
     await sock.sendMessage(groupId, {
       delete: {
         remoteJid: groupId,
@@ -49,33 +82,34 @@ async function detectAndAct({ sock, from, msg, textMsg }) {
     });
     markMessageAsBotDeleted(msg.key.id);
 
-    // 🔁 Handle warning modes
     if (settings.mode === 'warn-remove') {
-  const warnCount = incrementWarn(groupId, botJid, userJid);
-  const warnLimit = settings.warnLimit || 2;
+      const warnCount = incrementWarn(groupId, botJid, userJid);
+      const warnLimit = settings.warnLimit || 2;
 
-  await sendToChat(sock, groupId, {
-    message: `⚠️ @${userJid.split('@')[0]} posted a link!\nWarning ${warnCount}/${warnLimit}.`,
-    mentions: [userJid]
-  });
+      // Send random warning
+      await sendToChat(sock, groupId, {
+        message: getRandomMessage(warningMessages, userJid.split('@')[0], warnCount, warnLimit),
+        mentions: [userJid]
+      });
 
-  if (warnCount >= warnLimit) {
-    await sock.groupParticipantsUpdate(groupId, [userJid], 'remove');
-    await sendToChat(sock, groupId, {
-      message: `🚫 @${userJid.split('@')[0]} removed after ${warnCount} warnings.`,
-      mentions: [userJid]
-    });
-    resetWarn(groupId, botJid, userJid);
-  }
-} else if (settings.mode === 'warn') {
-  await sendToChat(sock, groupId, {
-    message: `⚠️ @${userJid.split('@')[0]} posted a link! Links are not allowed here.`,
-    mentions: [userJid]
-  });
-} else if (settings.mode === 'remove') {
+      // If user reached limit, remove them with random removal message
+      if (warnCount >= warnLimit) {
+        await sock.groupParticipantsUpdate(groupId, [userJid], 'remove');
+        await sendToChat(sock, groupId, {
+          message: getRandomMessage(removalMessages, userJid.split('@')[0], null, warnLimit),
+          mentions: [userJid]
+        });
+        resetWarn(groupId, botJid, userJid);
+      }
+    } else if (settings.mode === 'warn') {
+      await sendToChat(sock, groupId, {
+        message: getRandomMessage(simpleWarnMessages, userJid.split('@')[0]),
+        mentions: [userJid]
+      });
+    } else if (settings.mode === 'remove') {
       await sock.groupParticipantsUpdate(groupId, [userJid], 'remove');
       await sendToChat(sock, groupId, {
-        message: `🚫 @${userJid.split('@')[0]} sent a link and was removed immediately.`,
+        message: getRandomMessage(removalMessages, userJid.split('@')[0], null, settings.warnLimit || 2),
         mentions: [userJid]
       });
     }

@@ -1,12 +1,13 @@
 {
   "name": "bmm",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A powerful WhatsApp bot framework using Baileys and Supabase, designed for group automation and AI interaction.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "notify": "node scripts/notifyUpdate.js"
   },
   "engines": {
     "node": ">=21"
@@ -34,6 +35,7 @@
     "crypto": "^1.0.1",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
+    "fs": "^0.0.1-security",
     "fs-extra": "^11.3.0",
     "http": "^0.0.1-security",
     "link-preview-js": "^3.1.0",

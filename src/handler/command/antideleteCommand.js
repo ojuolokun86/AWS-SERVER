@@ -13,17 +13,21 @@ const { isBotOwner } = require('../../database/database');
 
 
 const menu = (forwardToOwner) => `
-*🛡️ Antidelete Settings*
-Reply with the number to choose:
-0. 🔕 Turn OFF (all)
-1. 💬 Enable for *private chat* only
-2. 👥 Enable for *group chat* only
-3. 🔄 Enable for *both*
-4. ❌ Exclude/include this group from restore
-5. 📥 Restore deleted messages to *DM* instead of group/chat: *${forwardToOwner ? 'ON' : 'OFF'}*
+🖥️ [SECURITY PROTOCOL: ANTIDELETE CONFIGURATION]
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+> Reply with an option code to execute:
 
-_Only the *bot owner* can set these settings._
+[0] ▸ DISABLE all restoration modules
+[1] ▸ ENABLE recovery for PRIVATE channels only
+[2] ▸ ENABLE recovery for GROUP channels only
+[3] ▸ ENABLE recovery for BOTH environments
+[4] ▸ TOGGLE current group from restore list
+[5] ▸ FORWARD deleted logs to OPERATOR console: ${forwardToOwner ? 'ACTIVE' : 'INACTIVE'}
+
+⚠ ACCESS LEVEL: ROOT REQUIRED (Bot Owner Only)
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
+
 
 async function handleAntideleteCommand(sock, msg, phoneNumber) {
   const from = msg.key.remoteJid;

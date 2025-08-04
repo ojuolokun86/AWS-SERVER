@@ -8,25 +8,27 @@ const generateTagAllMessage = (groupName, sender, botOwnerName, messageContent, 
     const totalMembers = mentions.length;
     const adminIds = adminList.map(id => id.split('@')[0]);
 
- let text = `╔═ ❖ 🤖 *BMM TAGALL* 🤖 ❖ ═\n`;
-    text += `║\n`;
-    text += `║ 📛 *Group:* ${groupName}\n`;
-    text += `║ 🙋 *Requested by:* @${senderJid.split('@')[0]}\n`;
-    text += `║ 👑 *Bot Owner:* ${botOwnerName}\n`;
-    text += `║ 📝 *Message:* ${messageContent || 'No message'}\n`;
-    text += `║\n`;
-    text += `╟─── 📊 *Group Stats* ───\n`;
-    text += `║ 👥 Members: *${totalMembers}*\n`;
-    text += `║ 👮 Admins: *${adminList.length}*\n`;
-    text += `║ 🙎 Non-Admins: *${totalMembers - adminList.length}*\n`;
-    text += `║\n`;
-    text += `╟─ 🙋 *Mentioned Members* ─\n`;
+    let text = `🤖 [TAG PROTOCOL INITIATED]\n`;
+    text += `────────────────────────────\n`;
+    text += `[GROUP]: ${groupName}\n`;
+    text += `[REQUESTED BY]: @${senderJid.split('@')[0]}\n`;
+    text += `[OWNER]: ${botOwnerName}\n`;
+    text += `[MESSAGE]: ${messageContent || 'No message provided'}\n`;
+    text += `────────────────────────────\n`;
+    text += `[GROUP STATS]\n`;
+    text += `• MEMBERS: ${totalMembers}\n`;
+    text += `• ADMINS: ${adminList.length}\n`;
+    text += `• NON-ADMINS: ${totalMembers - adminList.length}\n`;
+    text += `────────────────────────────\n`;
+    text += `[MENTION LIST]\n`;
     text += mentions.map(id => {
-    const username = id.split('@')[0];
-    const isAdmin = adminIds.includes(username);
-    return `║ ${isAdmin ? '👮‍♂️' : emoji} @${username}`;
+        const username = id.split('@')[0];
+        const isAdmin = adminIds.includes(username);
+        return `• ${isAdmin ? '👑' : emoji} @${username}`;
     }).join('\n');
-    text += `\n╚═══════════════════╝`;
+    text += `\n────────────────────────────\n`;
+    text += `[SYSTEM]: EXECUTION COMPLETE\n`;
+    
 
     const allMentions = mentions.includes(senderJid) ? mentions : [senderJid, ...mentions];
     return { text, mentions: allMentions };

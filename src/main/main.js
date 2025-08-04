@@ -11,22 +11,25 @@ const { restartBotForUser, sendRestartMessage } = require('./restart');
 const sessions = new Map(); // Map<authId:phoneNumber, { bmm, cleanup }>
 const { botInstances } = require('../utils/globalStore')
 const deletedSessions = new Set(); // To prevent restart of deleted bots
-const handleDeletedMessage = require('../handler/features/antideleteListener');
 const { makeInMemoryStore } = require('@rodrigogs/baileys-store')
 const store = makeInMemoryStore({});
 const { recordBotActivity } = require('../database/database');
+const { addSession, removeSession } = require('../utils/sessionManager');
 
-
-async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStatus, onQr, onPairingCode }) {
+async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStatus, onQr, onPairingCode, isInitialStart = false }) {
     recordBotActivity({ user: authId, bot: phoneNumber, action: 'starting' });
-    console.log(`starting Bmm for user ${phoneNumber}`);
+    console.log(`Starting Bmm for user ${phoneNumber} (${isInitialStart ? 'initial' : 'restart'})`);
+    
     if (!authId) throw new Error('authId is required');
     const sessionKey = `${authId}:${phoneNumber}`;
+    
+    // If session already exists, return it
     if (sessions.has(sessionKey)) {
         onStatus?.('already_running');
         return sessions.get(sessionKey).bmm;
     }
 
+    
     // Use SQLite for session persistence
     const { state, saveCreds } = await useSQLiteAuthState(authId, phoneNumber);
 
@@ -55,8 +58,12 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     });
     store.bind(bmm.ev);
     bmm.ev.on('connection.update', async (update) => {
-        if (update.connection === 'open') { 
+        const { connection, lastDisconnect, qr, isNewLogin } = update;
+        
+        if (connection === 'open') { 
             console.log(`🤖 connection Open for ${phoneNumber}`);
+            const added = addSession(phoneNumber, bmm);
+            //console.log(`Session added: ${added ? '✅' : '❌'}`);
               try {
             console.info(`🔄 Uploading pre-keys for ${phoneNumber}`);
             await bmm.uploadPreKeys();
@@ -89,7 +96,9 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 pairingMethod,
                 onStatus,
                 onQr,
-                onPairingCode
+                onPairingCode,
+                type: 'initial',
+                additionalInfo: '✨ Your bot is now online and ready to use!',
                 });
             console.log(`✅ User ${user_id} saved to database`);
             }
@@ -100,9 +109,18 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 console.log(`🔄 Synced all sessions from SQLite to Supabase after 5 seconds for ${phoneNumber}`);
             }, 5000); // 5 seconds
 
-        }
-        if (update.connection === 'close') {
+            // Send initial message after successful connection
+            if (isInitialStart) {
+                const { sendRestartMessage } = require('./restart');
+                sendRestartMessage(authId, bmm, phoneNumber, {
+                    type: 'initial',
+                    additionalInfo: '✨ Your bot is now online and ready to use!'
+                }).catch(e => console.error('Failed to send initial message:', e.message));
+            }
+        }        
+        if (connection === 'close') {
             recordBotActivity({ user: authId, bot: phoneNumber, action: 'connection_close' });
+            removeSession(phoneNumber);
             const reason = update.lastDisconnect?.error;
             let code = reason?.output?.statusCode || reason?.statusCode || reason?.code || reason;
             if (Boom.isBoom(reason)) code = reason.output.statusCode;
@@ -154,6 +172,13 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 onStatus?.('restarting', reason);
             }
         }
+        if (qr) {
+            onQr?.(qr);
+        }
+        
+        if (isNewLogin) {
+            console.log(`New login detected for ${phoneNumber}`);
+        }
     });
 
     bmm.ev.on('creds.update', saveCreds);
@@ -166,7 +191,9 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     function cleanup() {
         try { bmm.ws?.close(); } catch {}
         sessions.delete(sessionKey);
+        deletedSessions.add(sessionKey);
         delete botInstances[phoneNumber];
+        removeSession(phoneNumber);
         recordBotActivity({ user: authId, bot: phoneNumber, action: 'cleanup' });
     }
 
@@ -177,6 +204,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     const msg = messages[0];
     if (!msg.message) return;
     await handleMessage({
+        authId,
         sock: bmm,
         msg,
         phoneNumber
@@ -218,7 +246,8 @@ bmm.ev.on('app-state.sync', async (update) => {
 bmm.ev.on('error', (err) => {
     console.error('Baileys error:', err);
 });
-
+    const added = addSession(phoneNumber, bmm);
+    //console.log(`Session added on connect: ${added ? '✅' : '❌'}`);
     return bmm;
 
     
@@ -267,6 +296,7 @@ function stopBmmBot(authId, phoneNumber) {
     }
     sessions.delete(sessionKey);
     delete botInstances[phoneNumber];
+    removeSession(phoneNumber);
     recordBotActivity({ user: authId, bot: phoneNumber, action: 'stopped' });
 }
 async function getBotGroups(authId, phoneNumber) {

@@ -50,9 +50,9 @@ async function sendErrorToDevelopers(sock, errorMsg, contextInfo, targetNumbers 
           errorMsg,
           contextInfo
         });
-        console.log(`Relayed error to ${url} for developer ${devNumber}`);
+        //console.log(`Relayed error to ${url} for developer ${devNumber}`);
       } catch (err) {
-        console.error(`Failed to relay to ${url}:`, err.message);
+        //console.error(`Failed to relay to ${url}:`, err.message);
       }
     }
   }
@@ -73,31 +73,31 @@ async function deliverToDeveloperHere(errorMsg, contextInfo, targetNumbers = dev
           text: `🚨 Bot Error:\n${errorMsg}\nContext:\n${JSON.stringify(contextInfo, null, 2)}`
         });
         delivered = true;
-        console.log(`Sent error to developer ${devNumber} (local)`);
+        //console.log(`Sent error to developer ${devNumber} (local)`);
       } catch (err) {
-        console.error('Failed to DM developer', devNumber, err);
+        //console.error('Failed to DM developer', devNumber, err);
       }
     }
   }
 
   // Always relay to all servers for all dev numbers
-  const urls = await getBotServerUrls();
-  for (const devNumber of targetNumbers) {
-    for (const url of urls) {
-      try {
-        await axios.post(`${url}/relay-report`, {
-          devNumber,
-          errorMsg,
-          contextInfo
-        });
-        console.log(`Relayed error to ${url} for developer ${devNumber}`);
-      } catch (err) {
-        console.error(`Failed to relay to ${url}:`, err.message);
-      }
-    }
-  }
+//   const urls = await getBotServerUrls();
+//   for (const devNumber of targetNumbers) {
+//     for (const url of urls) {
+//       try {
+//         await axios.post(`${url}/relay-report`, {
+//           devNumber,
+//           errorMsg,
+//           contextInfo
+//         });
+//         //console.log(`Relayed error to ${url} for developer ${devNumber}`);
+//       } catch (err) {
+//         //console.error(`Failed to relay to ${url}:`, err.message);
+//       }
+//     }
+//   }
 
-  return delivered;
+//   return delivered;
 }
 
 module.exports = {

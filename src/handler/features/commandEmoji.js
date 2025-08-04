@@ -7,6 +7,7 @@ const commandEmojis = {
   help: '📚',
   menu: '📚',
   info: 'ℹ️',
+  restart: '🔄',
 
   // Moderation Tools
   antilink: '🧨',

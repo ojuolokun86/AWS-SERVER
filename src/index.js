@@ -4,6 +4,11 @@ const { createServer } = require('./server/server');
 const { restoreAllSessionsFromSupabase } = require('./database/sqliteAuthState');
 const { startBmmBot } = require('./main/main');
 const Database = require('better-sqlite3');
+const { getActiveSessions } = require('./utils/sessionManager');
+const { sendRestartMessage } = require('./main/restart');
+const { version } = require('../package.json');
+const fs = require('fs');
+const NOTIFICATION_FILE = path.join(__dirname, '../.update-notification');
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🛑 Unhandled Promise Rejection:', reason);
@@ -13,6 +18,48 @@ process.on('uncaughtException', (err) => {
   console.error('🔥 Uncaught Exception:', err);
 });
 
+
+async function checkForUpdateNotifications() {
+  try {
+      if (fs.existsSync(NOTIFICATION_FILE)) {
+          console.log('📄 Update notification file found');
+          const content = fs.readFileSync(NOTIFICATION_FILE, 'utf8');
+          const notification = JSON.parse(content);
+          
+          console.log('📋 Processing update notification:', notification);
+          const activeSessions = getActiveSessions();
+          console.log('📋 Active sessions:', Object.keys(activeSessions).length);
+
+          // Send notification to each active session
+          for (const [phoneNumber, sock] of Object.entries(activeSessions)) {
+              try {
+                  console.log(`📤 Sending update to ${phoneNumber}...`);
+                  await sendRestartMessage(sock, phoneNumber, {
+                      type: 'deployment',
+                      additionalInfo: `🚀 Bot has been updated to version ${notification.version}!`
+                  });
+                  console.log(`✅ Update sent to ${phoneNumber}`);
+              } catch (error) {
+                  console.error(`❌ Error sending to ${phoneNumber}:`, error.message);
+              }
+          }
+
+          // Delete the notification file after processing
+          fs.unlinkSync(NOTIFICATION_FILE);
+          console.log('✅ Update notification processed and file removed');
+      }
+  } catch (error) {
+      console.error('❌ Error in checkForUpdateNotifications:', error.message);
+  }
+}
+
+// Check for notifications every 5 seconds
+setInterval(() => {
+  checkForUpdateNotifications().catch(console.error);
+}, 5000);
+
+// Initial check
+checkForUpdateNotifications().catch(console.error);
 // Scheduled sync every 2 hours
 const { syncUserSettingsToSupabase } = require('./database/supabaseDb');
 const { db } = require('./database/database');

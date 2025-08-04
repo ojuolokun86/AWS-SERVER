@@ -152,7 +152,7 @@ router.post('/bot/restart', async (req, res) => {
     return res.status(400).json({ success: false, message: 'authId and phoneNumber are required.' });
   }
   try {
-    await restartBotForUser({ authId, phoneNumber, manual: true });
+    await restartBotForUser({ authId, phoneNumber, restartType: 'manual', additionalInfo: 'Bot restarted manually.' });
     res.json({ success: true, message: 'Bot restarted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

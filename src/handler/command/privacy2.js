@@ -12,15 +12,18 @@ const botPrivacyOptions = {
 };
 
 const botMenu = `
-🤖 *Bot Settings*
-_Reply with a number to perform an action:_
+🤖 [BOT CONFIGURATION MODULE]
+Reply with an index to execute a system operation:
 
-0. ✏️ Set Bot Name  
-1. 🖼️ Set Bot Profile Picture  
-2. 📝 Set Bot About (Bio)  
-3. 🚫 Get Blocklist  
-4. 👤 Get User Profile Picture (reply to user message)
+0. ✏️ [SET IDENTIFIER] → Modify bot display name
+1. 🖼️ [SET AVATAR] → Update operational profile image
+2. 📝 [SET STATUS] → Configure system bio descriptor
+3. 🚫 [BLOCKLIST REPORT] → Retrieve current access restrictions
+4. 👤 [FETCH USER AVATAR] → Acquire user profile image (reply required)
+
+[NOTICE] Unauthorized or invalid responses will be ignored.
 `;
+
 
 async function setBotPrivacyCommand(sock, msg) {
   const from = msg.key.remoteJid;
@@ -29,10 +32,11 @@ async function setBotPrivacyCommand(sock, msg) {
   const botId = sock.user?.id?.split(':')[0]?.split('@')[0];
   const botLid = sock.user?.lid?.split(':')[0]?.split('@')[0];
   const bot = botId && botLid;
+  const ownerName = sock.user.name;
   const senderId = sender?.split('@')[0];
   if (!msg.key.fromMe && !isBotOwner(senderId, botId, botLid)) {
     return await sendToChat(sock, from, {
-      message: '❌ Only the bot owner can configure bot privacy settings.'
+      message: `❌ Only *${ownerName}* can configure bot privacy settings.`
     });
   }
 
@@ -44,7 +48,7 @@ async function setBotPrivacyCommand(sock, msg) {
     if (!reply) return;
     if (!bot && !isBotOwner(senderId, botId, botLid)) {
           await sendToChat(sock, from, {
-            message: '❌ Only the bot owner can configure bot privacy settings.'
+            message: `❌ Only *${ownerName}* can configure bot privacy settings.`
           });
           sock.ev.off('messages.upsert', firstListener);
           return;

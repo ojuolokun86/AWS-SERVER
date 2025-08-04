@@ -27,3 +27,7 @@ jobs:
             npm install @whiskeysockets/baileys@latest
             npm install
             pm2 restart aws-v2 || pm2 start src/index.js --name aws-v2
+            # Wait for the bot to fully initialize
+            sleep 60
+            # Send update notifications with the correct version
+            node scripts/notifyUpdate.js

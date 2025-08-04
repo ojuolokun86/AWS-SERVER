@@ -3,18 +3,24 @@ const { setAntilinkSettings, getAntilinkSettings } = require('../../database/ant
 const { isBotOwner } = require('../../database/database');
 
 const menu = (settings) => `
-*🛡️ Antilink Settings*
-
-0. 🔕 Disable Antilink
-1. ⚠️ Warn user only
-2. 🚫 Warn & Remove user
-3. ❌ Remove user immediately
-4. ✏️ Set warn limit (current: ${settings.warnLimit || 2})
-5. 👮 Admin Bypass: *${settings.bypassAdmins ? 'ON' : 'OFF'}*
-
-_Reply with the number to choose._  
-Only the *bot owner* can configure these settings.
+🤖 [ANTILINK SECURITY MODULE]
+────────────────────────────
+[CURRENT CONFIGURATION]
+• WARN LIMIT: ${settings.warnLimit || 2}
+• ADMIN BYPASS: ${settings.bypassAdmins ? '🟢 ENABLED' : '🔴 DISABLED'}
+────────────────────────────
+[COMMAND OPTIONS]
+0 → DISABLE ANTILINK
+1 → WARN USER ONLY
+2 → WARN & REMOVE USER
+3 → REMOVE USER IMMEDIATELY
+4 → SET WARN LIMIT (CURRENT: ${settings.warnLimit || 2})
+5 → TOGGLE ADMIN BYPASS
+────────────────────────────
+[SYSTEM NOTE]: ONLY THE BOT OWNER CAN MODIFY THESE SETTINGS.
+[ACTION REQUIRED]: REPLY WITH A NUMBER TO EXECUTE COMMAND.
 `;
+
 
 async function handleAntilinkCommand(sock, msg, phoneNumber) {
   const from = msg.key.remoteJid;

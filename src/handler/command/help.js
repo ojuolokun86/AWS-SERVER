@@ -1,87 +1,96 @@
-// help.js
 const { getContextInfo, getForwardedContext } = require('../../utils/contextInfo');
+const { commandRegistry, commandsByCategory, version } = require('./commandRegistry');
+const sendToChat = require('../../utils/sendToChat');
 
-const helpText = `
-╭━━〔 🤖 *BMM DEV V2 Help* 〕━━┈⊷
+async function helpCommand(sock, msg, textMsg, prefix, isAdmin = false, isOwner = false) {
+    const from = msg.key.remoteJid;
+    const args = textMsg.trim().split(/\s+/);
 
-This bot supports a wide range of commands for group management, moderation, fun, and more.
-*Reply with .menu to see numbers for quick access!*
+    // Get context info for the message
+    const contextInfo = getContextInfo(msg);
+    const forwardedContext = getForwardedContext(msg);
 
-────────────────────
-⚙️ *Core Commands*
-- ping — Check if the bot is alive and measure response time.
-- settings — Show or change bot settings.
-- prefix — Change the command prefix for this bot.
-- mode — Switch between public/admin/owner mode.
-- menu — Show the interactive menu.
-- info — Show bot/server/system info.
+    try {
+        // Show specific command help
+        if (args.length > 1) {
+            const cmdName = args[1].toLowerCase();
+            const cmd = commandRegistry[cmdName];
 
-────────────────────
-🛡️ *Moderation & Safety*
-- antilink — Block WhatsApp/other links in group chats.
-- resetwarn — Reset a user's warning count (admin/owner only).
-- warnlist — Show the warning list for the group.
-- antidelete — Restore deleted messages in group/private chats.
-- privacy — Configure privacy settings for the bot.
-- disappearing — Enable/disable disappearing messages in group.
-- viewonce — Bypass WhatsApp's view-once restriction for media.
-- mute — Mute the group (no member can send messages).
-- unmute — Unmute the group.
-- lockinfo — Lock group info so only admins can edit.
-- unlockinfo — Unlock group info for all members.
-- add — Add a member to the group.
-- kick — Remove a member from the group.
-- promote — Promote a member to admin.
-- demote — Demote an admin to member.
-- requestlist — View pending group join requests.
-- acceptall — Accept all join requests.
-- rejectall — Reject all join requests.
-- presence — Show who is online in the group.
+            if (!cmd) {
+                return sendToChat(sock, from, {
+                    message: `🖥️ *SYSTEM NOTICE*\n\n❌ Command "${cmdName}" not recognized.\nExecute: \`${prefix}help\` for valid command directory.`,
+                    contextInfo,
+                    forwardedContext
+                });
+            }
 
-────────────────────
-👥 *Group & Member Commands*
-- listgroup — List all groups the bot is in.
-- welcome — Configure welcome/goodbye messages.
-- tag — Mention all group members (plain).
-- tagall — Mention all group members (with tags).
-- poll — Create a poll in the group.
-- group desc — Set the group description.
-- group pic — Change the group picture (reply to an image).
-- group link — Get the group invite link.
-- group stats — Show 30-day group activity stats.
-- group revoke — Revoke and refresh the group invite link.
+            if (cmd.ownerOnly && !isOwner) {
+                return sendToChat(sock, from, {
+                    message: '🖥️ *ACCESS DENIED*\n\n⛔ Insufficient privilege. Root access required.',
+                });
+            }
 
-────────────────────
-🎉 *Fun & Media*
-- sticker — Create a sticker from an image or video.
-- stimage — Convert a sticker to an image.
-- stgif — Convert an animated sticker to a GIF.
-- ss — Take a screenshot of a website.
-- react — React to a message with a random emoji.
-- status — Download WhatsApp status updates.
-- report — Report an issue to the developers.
+            let response = `🖥️ *SYSTEM MANUAL ACCESS GRANTED*\n\n`;
+            response += `> **Command:** \`${prefix}${cmdName}\`\n`;
+            response += `> **Description:** ${cmd.description}\n`;
+            response += `> **Usage:** \`${prefix}${cmd.usage}\`\n`;
+            response += `> **Category:** ${cmd.category}\n`;
 
-────────────────────
+            if (cmd.aliases) {
+                response += `> **Aliases:** ${cmd.aliases.map(a => `\`${a}\``).join(', ')}\n`;
+            }
+            if (cmd.adminOnly) response += '> 🔒 **Privilege:** Admin Only\n';
+            if (cmd.ownerOnly) response += '> 🔑 **Privilege:** Root Access (Owner)\n';
 
-*How to use:*
-- Type a command (e.g. .antidelete) in a group or DM.
-- For group subcommands, use: .group <subcommand>
-  Example: .group stats, .group desc Hello, .group pic (reply to image)
-- For more details on any command, type: .help <command>
-- Use .menu for a quick numbered menu.
+            response += `\n⚙️ *End of manual. Execute responsibly.*`;
+            return sendToChat(sock, from, { message: response});
+        }
 
-*Need support?* Follow our channel for updates & help!
+        // Show general help
+       let response = `🖥️ *COMMAND CONSOLE v${version}*\n\n`;
+        response += `> To fetch command manual:\n\`${prefix}help <command>\`\n`;
 
-`;
+        for (const [category, commands] of Object.entries(commandsByCategory)) {
+            const visibleCommands = isOwner
+                ? commands
+                : commands.filter(cmd => {
+                    if (cmd.ownerOnly && !isOwner) return false;
+                    if (cmd.adminOnly && !isAdmin) return false;
+                    return true;
+                });
 
-async function help(sock, chatId, message) {
-  const contextInfo = {
-    ...getContextInfo(),
-    ...getForwardedContext()
-  };
-  await sock.sendMessage(chatId, { text: helpText, contextInfo }, { quoted: message });
+            if (visibleCommands.length === 0) continue;
+
+            response += `\n📂 *${category.toUpperCase()}*\n`;
+            visibleCommands
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach(cmd => {
+                    response += `> \`${prefix}${cmd.name}\` → ${cmd.description}\n`;
+                });
+        }
+
+        response += `\n🔒 = Requires Admin  |  🔑 = Requires Root Access\n`;
+        if (isOwner) response += `\n✅ Root privilege detected. Full system access granted.\n`;
+        response += `\n🖥️ *Current Version:* ${version}\n`;
+        response += `\n⚙️ *End of directory listing.*`;
+
+        // Use sock.sendMessage instead of sendToChat
+        await sock.sendMessage(from, {
+            text: response,
+            contextInfo,
+            forwardedContext
+        });
+
+        return;
+
+    } catch (error) {
+        console.error('Error in help command:', error);
+        return sendToChat(sock, from, {
+            message: '🖥️ *SYSTEM ERROR*\n❌ Execution failed. Unable to process your request.',
+            contextInfo,
+            forwardedContext
+        });
+    }
 }
 
-module.exports = {
-  help
-};
+module.exports = helpCommand;

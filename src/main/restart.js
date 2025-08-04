@@ -1,75 +1,130 @@
-/**
- * Sends a restart message to a user's WhatsApp number.
- * @param {Socket} bmm - The WhatsApp socket instance.
- * @param {string} phoneNumber - The user's phone number.
- * @param {boolean} [manual=false] - Whether the restart was user-initiated.
- */
-async function sendRestartMessage(bmm, phoneNumber, manual = false) {
+const sendtoChat = require('../utils/sendToChat');
+const activeRestarts = new Map();
+async function sendRestartMessage(sock, phoneNumber, { type = 'manual', additionalInfo = '' } = {}) {
+  if (!sock?.sendMessage) {
+    console.error('❌ Cannot send restart message: Invalid socket');
+    return false;
+  }
+  const { version } = require('../../package.json');
+  const messageMap = {
+    manual: `🖥️ [SYSTEM]: Manual reboot protocol engaged.\n> STATUS: Online\n> VERSION: ${version}\n> ACTION: System now stabilized.`,
+    command: `🖥️ [COMMAND]: Reboot directive acknowledged.\n> SEQUENCE: Completed successfully\n> VERSION: ${version}\n> SYSTEM: Fully operational.`,
+    initial: `🖥️ [BOOT]: Initialization sequence complete.\n> STATUS: ACTIVE\n> SYSTEM: All modules loaded\n> VERSION: ${version}`,
+    crash: `🖥️ [ALERT]: Critical failure detected.\n> RECOVERY: Executed successfully\n> STATUS: STABLE\n> VERSION: ${version}`,
+    deployment: `🖥️ [UPDATE]: Firmware upgrade finalized.\n> NEW VERSION: ${version}\n> STATUS: Operational\n> NOTE: Execute 'help' for command reference.`
+};
+
+
+
+  const message = `${messageMap[type] || '🔄 Bot has been restarted'}\n\n${additionalInfo || ''}`.trim();
+  const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+
   try {
-    const text = manual
-      ? '🔄 Your bot was restarted by your request from the web dashboard.'
-      : '🔄 Your bot was restarted for full initialization.';
-    await bmm.sendMessage(`${phoneNumber}@s.whatsapp.net`, { text });
-    console.log(`📩 Restart message sent to ${phoneNumber}`);
-  } catch (err) {
-    console.error('❌ Failed to send restart message:', err.message);
+    await sendtoChat(sock, jid, { message });
+    console.log(`📩 Restart message (${type}) sent to ${phoneNumber}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to send restart message: ${error.message}`);
+    return false;
   }
 }
 
-/**
- * Restart the bot session for a specific user.
- * @param {Object} params - Restart parameters.
- * @param {string} params.authId - Unique ID for the bot session.
- * @param {string} params.phoneNumber - The WhatsApp phone number.
- * @param {string} [params.country] - Optional country info.
- * @param {string} [params.pairingMethod] - 'qrCode' or 'pairingCode'.
- * @param {function} [params.onStatus] - Optional status callback.
- * @param {function} [params.onQr] - Optional QR callback.
- * @param {function} [params.onPairingCode] - Optional pairing code callback.
- * @param {boolean} [params.manual] - Whether the restart was user-initiated.
- * @returns {Promise<Socket>} - The restarted socket instance.
- */
+async function handleRestartCompletion(sock, phoneNumber, { type, additionalInfo }) {
+  if (!sock || !phoneNumber) return false;
+  
+  try {
+    // Wait for the connection to be fully established
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Send the restart message
+    return await sendRestartMessage(sock, phoneNumber, { 
+      type, 
+      additionalInfo 
+    });
+  } catch (error) {
+    console.error(`❌ Failed to handle restart completion:`, error.message);
+    return false;
+  }
+}
+
 async function restartBotForUser({
   authId,
   phoneNumber,
-  country,
-  pairingMethod,
-  onStatus,
-  onQr,
-  onPairingCode,
-  manual = false
+  restartType = 'manual',
+  additionalInfo = '',
+  onStatus
 }) {
-  console.log(`⚡⚡ Restarting bot for user ${phoneNumber}...`);
   const { stopBmmBot, startBmmBot } = require('./main');
+  const sessionKey = `${authId}:${phoneNumber}`;
 
-  // 1. Stop the existing bot session (if any)
-  await stopBmmBot(authId, phoneNumber);
-
-  // 2. Wait before restarting (to fully release connection)
-  await new Promise(resolve => setTimeout(resolve, 20000));
-
-  // 3. Start new bot session
-  const newBmm = await startBmmBot({
-    authId,
-    phoneNumber,
-    country,
-    pairingMethod,
-    onStatus,
-    onQr,
-    onPairingCode
-  });
-
-  // 4. Send confirmation message from the new socket
-  try {
-    await sendRestartMessage(newBmm, phoneNumber, manual);
-  } catch (err) {
-    console.error('❌ Failed to send restart message after reconnect:', err.message);
+  if (activeRestarts.has(sessionKey)) {
+    console.log(`⏳ Restart already in progress for ${phoneNumber}, skipping...`);
+    return { success: false, error: 'Restart already in progress' };
   }
 
-  return newBmm;
+  try {
+    activeRestarts.set(sessionKey, true);
+    onStatus?.('stopping');
+
+    // Only stop if not initial start
+    if (restartType !== 'initial') {
+      await stopBmmBot(authId, phoneNumber);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+
+    onStatus?.('starting');
+    let restartAttempts = 0;
+    const maxAttempts = 3;
+
+    while (restartAttempts < maxAttempts) {
+      try {
+        const newBmm = await startBmmBot({
+          authId,
+          phoneNumber,
+          onStatus: (status) => {
+            onStatus?.(status);
+          }
+        });
+
+        if (newBmm) {
+          // Handle the restart completion (including sending the message)
+          await handleRestartCompletion(newBmm, phoneNumber, {
+            type: restartType,
+            additionalInfo
+          });
+          
+          return { 
+            success: true, 
+            bmm: newBmm,
+            messageSent: true
+          };
+        }
+      } catch (error) {
+        console.error(`❌ Restart attempt ${restartAttempts + 1} failed:`, error.message);
+        restartAttempts++;
+        if (restartAttempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * restartAttempts));
+        }
+      }
+    }
+
+    throw new Error(`Failed to restart after ${maxAttempts} attempts`);
+  } catch (error) {
+    console.error(`❌ Failed to restart bot (${restartType}):`, error.message);
+    return { 
+      success: false, 
+      error: error.message,
+      messageSent: false
+    };
+  } finally {
+    setTimeout(() => {
+      activeRestarts.delete(sessionKey);
+    }, 30000);
+  }
 }
 
-module.exports = {
+module.exports = {  
   restartBotForUser,
+  handleRestartCompletion,
   sendRestartMessage
 };

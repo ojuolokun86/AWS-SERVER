@@ -72,32 +72,37 @@ module.exports = async function settingsCommand(sock, msg) {
 // `.trim();
 
   // Format 3: Simple Style
-  const format3 = () => `
-======= BOT SETTINGS =======
-Mode: *${mode}*
-Prefix: *${prefix}*
-Owner: ${owner}
-React To Command: *${commandReact}*
-
-======= ANTILINK =======
-Status: *${antilink.mode || 'N/A'}*
-Warn Limit: *${antilink.warnLimit || 'N/A'}*
-Bypass Admins: *${antilink.bypassAdmins ? "Yes" : "No"}*
-
-======= ANTIDELETE =======
-Mode: *${antidelete.mode || 'N/A'}*
-Send to Owner: *${antidelete.sendToOwner ? "Yes" : "No"}*
-Excluded: *${antidelete.excluded ? "Yes" : "No"}*
-
-======= STATUS VIEW =======
-Status View: *${statusView}*
-
-======= WELCOME/GOODBYE =======
-${welcomeText}
-`.trim();
+  const formatRobotic = () => `
+  🤖 [SYSTEM CONFIGURATION REPORT]
+  
+  [MODE]: ${mode.toUpperCase()}
+  [PREFIX]: ${prefix}
+  [OWNER]: ${owner}
+  [COMMAND REACT]: ${commandReact ? "ENABLED" : "DISABLED"}
+  
+  --- [SECURITY PROTOCOL: ANTI-LINK] ---
+  STATUS: ${antilink.mode || 'N/A'}
+  WARN LIMIT: ${antilink.warnLimit || 'N/A'}
+  ADMIN BYPASS: ${antilink.bypassAdmins ? "TRUE" : "FALSE"}
+  
+  --- [SECURITY PROTOCOL: ANTI-DELETE] ---
+  STATUS: ${antidelete.mode || 'N/A'}
+  FORWARD TO OWNER: ${antidelete.sendToOwner ? "TRUE" : "FALSE"}
+  EXCLUDED CHATS: ${antidelete.excluded ? "YES" : "NO"}
+  
+  --- [VISIBILITY MATRIX: STATUS VIEW] ---
+  CURRENT SETTING: ${statusView}
+  
+  --- [GREETING MODULE] ---
+  WELCOME/GOODBYE: ${welcomeText}
+  
+  [NOTICE]: Only root-level operators can modify these parameters.
+  [SYSTEM]: End of diagnostic output.
+  `.trim();
+  
 
   // Pick a random format
-  const formats = [format3];
+  const formats = [formatRobotic];
   const randomFormat = formats[Math.floor(Math.random() * formats.length)];
   const text = randomFormat();
 
