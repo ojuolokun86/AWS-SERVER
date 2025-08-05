@@ -120,7 +120,6 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         }        
         if (connection === 'close') {
             recordBotActivity({ user: authId, bot: phoneNumber, action: 'connection_close' });
-            removeSession(phoneNumber);
             const reason = update.lastDisconnect?.error;
             let code = reason?.output?.statusCode || reason?.statusCode || reason?.code || reason;
             if (Boom.isBoom(reason)) code = reason.output.statusCode;
