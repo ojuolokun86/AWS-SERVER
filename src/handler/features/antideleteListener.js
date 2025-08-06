@@ -16,7 +16,7 @@ async function handleDeletedMessage(sock, msg) {
   const msgId = protocol.key.id;
   const textData = getTextFromStore(msgId);
    if (remoteJid === 'status@broadcast') {
-  console.log(`⏭️ Skipping restore: deleted status message (${msgId})`);
+  //console.log(`⏭️ Skipping restore: deleted status message (${msgId})`);
   return;
 }
   // const deletedBy = textData?.sender || protocol.key.participant || chatId;
@@ -34,22 +34,22 @@ async function handleDeletedMessage(sock, msg) {
 
   const ownerJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
   const forwardToOwner = shouldForwardToOwner(botId);
-  console.log(`🔍 Forward to owner: ${forwardToOwner}, Owner JID: ${ownerJid}`);
+  //console.log(`🔍 Forward to owner: ${forwardToOwner}, Owner JID: ${ownerJid}`);
   const targetJid = (!isGroup && forwardToOwner) ? ownerJid : chatId;
-  console.log(`🔍 Target JID for restoration: ${targetJid}`);
+  //console.log(`🔍 Target JID for restoration: ${targetJid}`);
   const deletedById = deletedBy?.split('@')[0];
   const deletedByBot = msg.key.fromMe || deletedById === botId || deletedById === botLid;
  
   if (wasDeletedByBot(msgId)) return;
    
-        console.log(`🔍 Handling deleted message ${msgId} in ${chatId} by ${deletedBy} at ${timestamp}`);
+        //console.log(`🔍 Handling deleted message ${msgId} in ${chatId} by ${deletedBy} at ${timestamp}`);
   // Get global antidelete mode
   const mode = getAntideleteMode(botId);
   
   if (mode === 'off') return;
   if (deletedByBot) return;
   if (isGroupExcluded(botId, chatId)) return;
-  console.log(`🔍 Deleted by bot: ${deletedByBot}, Mode: ${mode}`);
+  //console.log(`🔍 Deleted by bot: ${deletedByBot}, Mode: ${mode}`);
   const shouldRestore =
     mode === 'both' ||
     (mode === 'group' && isGroup) ||
@@ -80,7 +80,7 @@ async function handleDeletedMessage(sock, msg) {
       message: `♻️ *Restored deleted message*\n\n*Content:* ${textData.content}${deletedByTag ? `\n*By:* ${deletedByTag}` : ''}\n*At:* ${timestamp}`,
       mentions
     });
-    console.log(`Restoring deleted message to: ${targetJid}, mentioning: ${mentions}`);
+    //console.log(`Restoring deleted message to: ${targetJid}, mentioning: ${mentions}`);
     deleteTextFromStore(msgId);
     return;
   }
@@ -105,7 +105,7 @@ async function handleDeletedMessage(sock, msg) {
     message: `🗑️ *A message was deleted${deletedByTag ? ` by ${deletedByTag}` : ''}* but could not be restored.`,
     mentions
   });
-  console.log(`Restoring deleted message to: ${targetJid}, mentioning: ${mentions}`);
+  //console.log(`Restoring deleted message to: ${targetJid}, mentioning: ${mentions}`);
 }
 
 module.exports = handleDeletedMessage;

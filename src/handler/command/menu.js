@@ -6,13 +6,16 @@ const getMainMenu = (
   ownerName = 'Unknown',
   mode = 'private',
   phoneNumber = 'Unknown',
+  prefix = 'Unknown',
+  version = 'Unknown',
 ) => `
 🖥️ *SYSTEM CONTROL PANEL INITIALIZED*
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-> **Operator:** ${ownerName}
-> **Mode:** ${mode.toUpperCase()}
-> **System ID:** ${phoneNumber}
-> **Firmware:** v${version}
+> **Operator:** ${ownerName || 'Not Set'}
+> **Mode:** ${mode ? mode.toUpperCase() : 'PRIVATE'}
+> **System ID:** ${phoneNumber || 'Not Available'}
+> **Prefix:** ${prefix || 'Not Set'}
+> **Firmware:** v${version || '1.0.0'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📂 *CORE COMMANDS*
@@ -24,6 +27,7 @@ const getMainMenu = (
 > menu → Display system menu
 > info → System information
 > restart → Reboot system
+> logout → Logout session
 
 🛡️ *MODERATION & SECURITY*
 > antilink → Block external links
@@ -45,14 +49,49 @@ const getMainMenu = (
 > group stats → Display group stats
 > listinactive → View inactive members
 
-🎨 *MEDIA & FUN*
+🎨 *FUN*
 > sticker → Convert image/video to sticker
 > stimage → Sticker to image
 > stgif → Sticker to GIF
+> kill → Kill someone
+> hug → Hug someone
+>joke → Tell a joke
+>fact → Tell a fact
+>quote → Tell a quote
+>imagine → Generate AI image
+>slap → Slap someone
+>hug → Hug someone
+>kick → Kick someone
+>poke → Poke someone
+>tick → Tick someone
+>shoot → Shoot someone
+>feed → Feed someone
+>pat → Pat someone
+>kill → Kill someone
+>kiss → Kiss someone
+>laugh → Laugh at someone
+>lick → lick someone
+>blush → blush at someone
+>shrug → shrug at someone
+>smile → smile at someone
+>stare → stare at someone
+>yeet → yeet someone
+>cuddle → cuddle someone
+>highfive → highfive someone
+>facepalm → facepalm someone
+>think → think at someone
+>pout → pout at someone
+>bite → bite someone
+>smug → smug at someone
+>baka → baka at someone
+>translate → Translate text
+
+📁 *MEDIA*
 > ss → Take screenshot of a webpage
 > imagine → Generate AI image
 > song → Download audio
 > play → Play music
+> video → Download video
 
 🔧 *UTILITIES*
 > status → View system uptime
@@ -61,6 +100,13 @@ const getMainMenu = (
 > online → Show online members
 > setprofile → Update profile
 > report → Send a report
+
+🤖 *AI* 
+> ai → Chat with AI
+> gpt → Chat with GPT
+> llama → Chat with Meta Llama AI
+> mistral → Chat with Mistral AI
+> deepseek → Chat with DeepSeek V3 AI
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 🖥️ *EXECUTION MODE*: Reply with a command to run.
@@ -72,8 +118,15 @@ Follow us on whatsapp channel click view channel
 
 
 
-async function menu(sock, chatId, message, ownerName, mode, phoneNumber) {
-  const menuText = getMainMenu(ownerName, mode, phoneNumber);
+async function menu(sock, chatId, message,   ownerName, mode, phoneNumber, prefix) {
+  const menuText = getMainMenu(
+    ownerName, 
+    mode, 
+    phoneNumber, 
+    prefix,
+    version, 
+     // This comes from the imported package.json
+  );
   const contextInfo = {
     ...getContextInfo(),
     ...getForwardedContext()

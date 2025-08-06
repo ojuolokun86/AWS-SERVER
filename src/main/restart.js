@@ -50,9 +50,13 @@ async function handleRestartCompletion(sock, phoneNumber, { type, additionalInfo
 async function restartBotForUser({
   authId,
   phoneNumber,
-  restartType = 'manual',
+  country,
+  pairingMethod,
+  onStatus,
+  onQr,
+  onPairingCode,
+  restartType = '',
   additionalInfo = '',
-  onStatus
 }) {
   const { stopBmmBot, startBmmBot } = require('./main');
   const sessionKey = `${authId}:${phoneNumber}`;
@@ -67,10 +71,10 @@ async function restartBotForUser({
     onStatus?.('stopping');
 
     // Only stop if not initial start
-    if (restartType !== 'initial') {
-      await stopBmmBot(authId, phoneNumber);
+    
+      stopBmmBot(authId, phoneNumber);
       await new Promise(resolve => setTimeout(resolve, 5000));
-    }
+    
 
     onStatus?.('starting');
     let restartAttempts = 0;
@@ -81,9 +85,15 @@ async function restartBotForUser({
         const newBmm = await startBmmBot({
           authId,
           phoneNumber,
+          country,
+          pairingMethod,
           onStatus: (status) => {
             onStatus?.(status);
-          }
+          },
+          onQr,
+          onPairingCode,
+          restartType,
+          additionalInfo
         });
 
         if (newBmm) {

@@ -97,7 +97,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 onStatus,
                 onQr,
                 onPairingCode,
-                type: 'initial',
+                restartType: 'initial',
                 additionalInfo: '✨ Your bot is now online and ready to use!',
                 });
             console.log(`✅ User ${user_id} saved to database`);
@@ -190,7 +190,6 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     function cleanup() {
         try { bmm.ws?.close(); } catch {}
         sessions.delete(sessionKey);
-        deletedSessions.add(sessionKey);
         delete botInstances[phoneNumber];
         removeSession(phoneNumber);
         recordBotActivity({ user: authId, bot: phoneNumber, action: 'cleanup' });
@@ -251,6 +250,54 @@ bmm.ev.on('error', (err) => {
 
     
 }
+
+
+
+// In src/main/main.js
+async function handleLogout(bmm, authId, phoneNumber) {
+    try {
+        console.log('Logout requested for', phoneNumber);
+
+        // 1. Close the connection gracefully
+        try {
+            if (bmm?.ws) {
+                await bmm.ws.close();
+            }
+        } catch (err) {
+            console.warn(`⚠️ Failed to close connection: ${err.message}`);
+        }
+        
+        // 2. Clean up event listeners
+        if (bmm?.ev && typeof bmm.ev.removeAllListeners === 'function') {
+            bmm.ev.removeAllListeners();
+        } else {
+            console.warn("⚠️ Event emitter not available for this instance");
+        }
+        
+        // 3. Wait a bit for cleanup
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // 4. Delete session and user data
+        try {
+            await deleteBmmBot(authId, phoneNumber);
+            console.log('Bot session deleted successfully');
+            // In main.js, update the recordBotActivity call to:
+                await recordBotActivity({
+                    user: authId,
+                    bot: phoneNumber,
+                    action: 'logout'
+                });
+            return { success: true, message: 'Successfully logged out' };
+        } catch (error) {
+            console.error('Failed to delete bot:', error);
+            throw new Error('Failed to complete logout: ' + error.message);
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        throw error; // Re-throw to be handled by the caller
+    }
+}
+
 
 
 // Delete bot session from SQLite and memory
@@ -342,4 +389,4 @@ async function getBotGroups(authId, phoneNumber) {
 // process.on('exit', () => gracefulShutdown(false));
 
 
-module.exports = { startBmmBot, stopBmmBot, deleteBmmBot, getBotGroups, store };
+module.exports = { startBmmBot, stopBmmBot, deleteBmmBot, getBotGroups, store, handleLogout };

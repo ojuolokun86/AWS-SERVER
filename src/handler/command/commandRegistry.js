@@ -1,5 +1,6 @@
 // src/commands/commandRegistry.js
 const { version } = require('../../../package.json');
+const { description } = require('./report');
 
 const commandRegistry = {
     // Bot Control
@@ -19,7 +20,12 @@ const commandRegistry = {
         usage: 'ping',
         category: 'Bot Control'
     },
-
+    'logout': {
+        description: 'Log out from bot system and clear all session ',
+        usage: 'logout',
+        category: 'Bot Control',
+        ownerOnly: true
+    },
     // Group Management
     'group': {
         description: 'Group management commands',
@@ -200,19 +206,6 @@ const commandRegistry = {
         usage: 'screenshot [url]',
         category: 'Media'
     },
-
-    // Music
-    'play': {
-        description: 'Play a song from YouTube',
-        usage: 'play [song name]',
-        category: 'Music'
-    },
-    'song': {
-        description: 'Download a song from YouTube',
-        usage: 'song [song name or link]',
-        category: 'Music'
-    },
-
     // Poll
     'poll': {
         description: 'Create a poll',
@@ -321,7 +314,7 @@ const commandRegistry = {
         category: 'Utilities'
     },
 
-    // Fun & AI
+    // Fun 
     'imagine': {
         description: 'Generate an AI image from a prompt',
         usage: 'imagine <prompt>',
@@ -331,12 +324,113 @@ const commandRegistry = {
         description: 'Echo back your message',
         usage: 'echo <text>',
         category: 'Fun'
-    }
+    },
+
+
+    // AI
+   // In your commandRegistry object, add:
+    'gpt': {
+    description: 'Chat with GPT-3.5 AI',
+    usage: 'gpt <your message>',
+    category: 'AI',
+    aliases: ['ai']
+},
+'llama': {
+    description: 'Chat with Meta Llama AI',
+    usage: 'llama <your message>',
+    category: 'AI'
+},
+'mistral': {
+    description: 'Chat with Mistral AI',
+    usage: 'mistral <your message>',
+    category: 'AI'
+},
+'deepseek': {
+    description: 'Chat with DeepSeek V3 AI',
+    usage: 'deepseek <your message>',
+    category: 'AI',
+    aliases: ['ds']
+},
+
+'video': {
+    description: 'Download video from url',
+    usage: 'video <url>',
+    category: 'Media'
+},
+'play': {
+    description: 'Play a song from YouTube',
+    usage: 'play [song name]',
+    category: 'Media'
+},
+'song': {
+    description: 'Download a song from YouTube',
+    usage: 'song [song name or link]',
+    category: 'Media'
+},
+
+    // Fun 
+    'imagine': {
+        description: 'Generate an AI image from a prompt',
+        usage: 'imagine <prompt>',
+        category: 'Fun'
+    },
+    'echo': {
+        description: 'Echo back your message',
+        usage: 'echo <text>',
+        category: 'Fun'
+    },
+    'quote': {
+        description: 'Get a random inspirational quote',
+        usage: 'quote',
+        category: 'Fun'
+    },
+    'joke': {
+        description: 'Get a random joke',
+        usage: 'joke',
+        category: 'Fun'
+    },
+    'translate': {
+        description: 'Translate text to another language',
+        usage: 'translate <lang_code> <text>',
+        category: 'Fun'
+    },
+    // Fun action commands (GIFs)
+    'slap': { description: 'Slap someone with a GIF', usage: 'slap [@user]', category: 'Fun' },
+    'hug': { description: 'Hug someone with a GIF', usage: 'hug [@user]', category: 'Fun' },
+    'kick': { description: 'Kick someone with a GIF', usage: 'kick [@user]', category: 'Fun' },
+    'poke': { description: 'Poke someone with a GIF', usage: 'poke [@user]', category: 'Fun' },
+    'tickle': { description: 'Tickle someone with a GIF', usage: 'tickle [@user]', category: 'Fun' },
+    'cry': { description: 'Show a crying GIF', usage: 'cry', category: 'Fun' },
+    'pat': { description: 'Pat someone with a GIF', usage: 'pat [@user]', category: 'Fun' },
+    'kiss': { description: 'Kiss someone with a GIF', usage: 'kiss [@user]', category: 'Fun' },
+    'wave': { description: 'Wave with a GIF', usage: 'wave', category: 'Fun' },
+    'blush': { description: 'Show a blushing GIF', usage: 'blush', category: 'Fun' },
+    'shrug': { description: 'Shrug with a GIF', usage: 'shrug', category: 'Fun' },
+    'smile': { description: 'Show a smiling GIF', usage: 'smile', category: 'Fun' },
+    'laugh': { description: 'Show a laughing GIF', usage: 'laugh', category: 'Fun' },
+    'lick': { description: 'Lick someone with a GIF', usage: 'lick [@user]', category: 'Fun' },
+    'bored': { description: 'Show a bored GIF', usage: 'bored', category: 'Fun' },
+    'stare': { description: 'Stare with a GIF', usage: 'stare [@user]', category: 'Fun' },
+    'yeet': { description: 'Yeet with a GIF', usage: 'yeet [@user]', category: 'Fun' },
+    'feed': { description: 'Feed someone with a GIF', usage: 'feed [@user]', category: 'Fun' },
+    'dance': { description: 'Show a dancing GIF', usage: 'dance', category: 'Fun' },
+    'cuddle': { description: 'Cuddle with someone with a GIF', usage: 'cuddle [@user]', category: 'Fun' },
+    'highfive': { description: 'High five with a GIF', usage: 'highfive [@user]', category: 'Fun' },
+    'facepalm': { description: 'Show a facepalm GIF', usage: 'facepalm', category: 'Fun' },
+    'thumbsup': { description: 'Show a thumbs up GIF', usage: 'thumbsup', category: 'Fun' },
+    'think': { description: 'Show a thinking GIF', usage: 'think', category: 'Fun' },
+    'shoot': { description: 'Shoot with a GIF', usage: 'shoot [@user]', category: 'Fun' },
+    'pout': { description: 'Show a pouting GIF', usage: 'pout', category: 'Fun' },
+    'bite': { description: 'Bite someone with a GIF', usage: 'bite [@user]', category: 'Fun' },
+    'smug': { description: 'Show a smug GIF', usage: 'smug', category: 'Fun' },
+    'baka': { description: 'Call someone baka with a GIF', usage: 'baka [@user]', category: 'Fun' },
+
 };
 
 // Add aliases
 commandRegistry.h = commandRegistry.help;
 commandRegistry.ajuda = commandRegistry.help;
+
 
 // Group commands by category
 const commandsByCategory = {};

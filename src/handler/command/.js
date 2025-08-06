@@ -16,4 +16,4 @@
 
 // git add .
 // git commit -m "Save changes before version bump"
-// npm version patch
+// npm version minor

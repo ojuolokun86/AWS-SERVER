@@ -8,52 +8,59 @@ const commandEmojis = {
   menu: '📚',
   info: 'ℹ️',
   restart: '🔄',
+  logout: '🚪',
 
-  // Moderation Tools
+  // Moderation & Security
   antilink: '🧨',
   resetwarn: '🧹',
   warnlist: '📑',
   antidelete: '🕵️‍♂️',
-
-  // Bot Commands
-  listgroup: '🗂️',
-  status: '📶',
-  vv: '👁️',
-  view: '📤',
-  react: '😹',
-  online: '👥',
   privacy: '🔐',
   disappear: '⌛',
-  setprofile: '🧑‍🎨',
 
-  // Group Controls
-  welcome: '🎉',
+  // Group Management
+  listgroup: '🗂️',
   tag: '🗣️',
   tagall: '📢',
   mute: '🔇',
   unmute: '🔊',
-  lockinfo: '🛑',
-  unlockinfo: '🆓',
+  lockinfo: '🔒',
+  unlockinfo: '🔓',
   add: '➕',
   kick: '➖',
   promote: '🆙',
   demote: '🧍',
+  poll: '📊',
+  'group link': '🔗',
+  'group stats': '📈',
+  listinactive: '💤',
   requestlist: '📬',
   acceptall: '✅',
   rejectall: '❌',
-  poll: '📊',
-  'group desc': '📝',
-  'group pic': '🖼️',
-  'group link': '🔗',
-  'group stats': '📈',
-  'group revoke': '🚫',
 
-  // Fun & Media
+  // Media & Fun
   sticker: '🖼️',
   stimage: '🖼️',
   stgif: '🖼️',
   ss: '🌐',
-  report: '📣'
+  imagine: '🧠',
+  song: '🎵',
+  play: '▶️',
+
+  // Utilities
+  status: '📶',
+  vv: '👁️',
+  view: '📤',
+  online: '👥',
+  setprofile: '🧑‍🎨',
+  report: '📣',
+
+  // AI
+  ai: '🤖',
+  gpt: '🧠',
+  llama: '🦙',
+  mistral: '🌬️',
+  deepseek: '🔎'
 };
 
 const randomEmojis = ['🤖', '✨', '🎲', '🚀', '💡', '🎯', '🧠', '🎉', '⚙️', '💥'];

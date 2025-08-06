@@ -77,6 +77,9 @@ db.prepare(`
 `).run();
 
 function recordBotActivity({ user, bot, action }) {
+  if (!user || !bot || !action) {
+    throw new Error('Missing required parameters for recordBotActivity');
+}
   db.prepare(
       'INSERT INTO bot_activity (user, bot, action, time) VALUES (?, ?, ?, ?)'
   ).run(user, bot, action, Date.now());

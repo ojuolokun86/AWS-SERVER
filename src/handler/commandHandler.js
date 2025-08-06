@@ -47,6 +47,13 @@ const stickerCommand = require('./command/stikcer');
 const { checkIfAdmin } = require('./command/kick');
 const report = require('./command/report');
 const helpCommand = require('./command/help');
+const { downloadVideo } = require('./command/video');
+const { logoutCommand } = require('./command/logout');
+const aiCommand = require('./command/aiCommand');
+const { clearChat } = require('./command/clearChat');
+const funCommand = require('./command/funCommand');
+
+
 
 
 
@@ -122,8 +129,16 @@ async function execute({ authId, sock, msg, textMsg, phoneNumber }) {
         break;
       case 'menu':
         const { menu } = require('./command/menu');
-        await menu(sock, from, msg, prefix, botName, mode, botId);
+        await menu(sock, from, msg, botName, mode, botId, prefix,);
         break;
+      case 'ai':
+      case 'gpt':
+      case 'llama':
+      case 'mistral':
+      case 'deepseek':
+      case 'ds':
+          await aiCommand(sock, from, msg, { prefix, args, command });
+          break;  
       case 'ping':
         await sendToChat(sock, from, { message: '🏓 Pong!' });
         break;
@@ -241,13 +256,13 @@ async function execute({ authId, sock, msg, textMsg, phoneNumber }) {
       //   await convertStickerToGif(sock, msg, from);
       //   break;
       case 'play':
-        await playCommand(sock, from, msg);
+        await playCommand(sock, from, msg, { prefix, args });
         break;
       case 'imagine':
         await imagine(sock, msg, command, args, from);
         break;
       case 'song':
-        await songCommand(sock, from, msg);
+        await songCommand(sock, from, msg, { prefix, args });
         break;
       case 'kick':
         await kickCommand(sock, msg, command, args, from);
@@ -261,9 +276,27 @@ async function execute({ authId, sock, msg, textMsg, phoneNumber }) {
       case 'restart':
         await restartCommand(authId, sock, msg);
         break;
+      case 'logout':
+        await logoutCommand(authId, sock, msg, );
+        break;
+      case 'video':
+        await downloadVideo(sock, from, msg, args );
+        break;
+      case 'clear':
+        await clearChat(sock, from, msg);
+        break;
+        case 'slap': case 'hug': case 'kick': case 'poke': case 'tickle':
+          case 'cry': case 'pat': case 'kill': case 'kiss': case 'wave':
+          case 'blush': case 'shrug': case 'smile': case 'laugh':
+          case 'lick': case 'bored': case 'stare': case 'yeet': case 'feed':
+          case 'dance': case 'cuddle': case 'highfive': case 'facepalm':
+          case 'thumbsup': case 'think': case 'shoot': case 'pout':
+          case 'bite': case 'smug': case 'baka': case 'quote': case 'joke': case 'translate':
+          await funCommand(sock, from, msg, command, args);
+          break;
       default:
         await sendToChat(sock, from, {
-          message: `❌ Unknown command: *${command}*\nType *${getUserPrefix(phoneNumber)}help* for a list of commands.`
+          message: `❌ Unknown command: *${command}*\nType *${getUserPrefix(phoneNumber)}menu* for a list of commands.`
         });
         break;
     }
