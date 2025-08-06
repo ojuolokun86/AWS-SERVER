@@ -19,8 +19,6 @@ jobs:
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
-            sudo apt-get update
-            sudo apt install yt-dlp
             cd ~/AWS-SERVER
             git pull origin main
             npm install @whiskeysockets/baileys@latest
