@@ -16,7 +16,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.AWS_HOST }}
-          username: techitoon
+          username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd ~/AWS-SERVER
