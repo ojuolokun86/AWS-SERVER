@@ -47,7 +47,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         receivedPendingNotifications: true,
         appStateSyncIntervalMs: 60000,
         keepAliveIntervalMs: 30000, 
-        connectTimeoutMs: 90000, 
+        connectTimeoutMs: 120000, 
         emitOwnEvents: true, 
         linkPreviewImageThumbnailWidth: 1200, 
         fireInitQueries: false,         
