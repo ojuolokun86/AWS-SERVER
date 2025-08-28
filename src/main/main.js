@@ -4,18 +4,17 @@ const Boom = require('@hapi/boom');
 const pino = require('pino');
 const { saveSessionToSupabase, loadSessionFromSupabase, deleteSessionFromSupabase } = require('../database/supabaseSession');
 const { useSQLiteAuthState } = require('../database/sqliteAuthState');
-const { addBot, removeBot, } = require('./botManager');
 const  handleMessage  = require('../handler/messageHandler');
 const { saveUserToDb, userExists } = require('../database/database');
 const { restartBotForUser, sendRestartMessage } = require('./restart');
 const sessions = new Map(); // Map<authId:phoneNumber, { bmm, cleanup }>
-const { botInstances } = require('../utils/globalStore')
+const { botInstances, botStartTimes } = require('../utils/globalStore')
 const deletedSessions = new Set(); // To prevent restart of deleted bots
 const { makeInMemoryStore } = require('@rodrigogs/baileys-store')
 const store = makeInMemoryStore({});
 const { recordBotActivity } = require('../database/database');
 const { addSession, removeSession } = require('../utils/sessionManager');
-
+const NodeCache = require('node-cache');
 async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStatus, onQr, onPairingCode, isInitialStart = false }) {
     recordBotActivity({ user: authId, bot: phoneNumber, action: 'starting' });
     console.log(`Starting Bmm for user ${phoneNumber} (${isInitialStart ? 'initial' : 'restart'})`);
@@ -34,30 +33,33 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     const { state, saveCreds } = await useSQLiteAuthState(authId, phoneNumber);
 
     const { version } = await fetchLatestBaileysVersion();
-
+    const groupCache = new NodeCache({ stdTTL: 60 * 60, useClone: false });
     const bmm = makeWASocket({
         version,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
         },
-        browser: ['Linux', 'Safari', '18.5'],
+        browser: ['Windows', 'Chrome', '128.0.6613.137'],
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         generateHighQualityLinkPreview: true,
         receivedPendingNotifications: true,
         appStateSyncIntervalMs: 60000,
-        keepAliveIntervalMs: 30000, // Ping WhatsApp every 30s
-        connectTimeoutMs: 60000, // 60s timeout
-        emitOwnEvents: true, // emits your own messages (fromMe)
-        linkPreviewImageThumbnailWidth: 1200, // thumbnail preview size
-        fireInitQueries: false,
-        shouldSyncHistoryMessage: false,
-        syncFullHistory: true,            // Don’t pull old messages
-        downloadHistory: false,            // Avoid history download
-        markOnlineOnConnect: true,   // Don’t wait for chat list before use
-       getMessage: async (key) => {
-        return (await store.loadMessage?.(key.remoteJid, key.id)) || undefined;
+        keepAliveIntervalMs: 30000, 
+        connectTimeoutMs: 90000, 
+        emitOwnEvents: true, 
+        linkPreviewImageThumbnailWidth: 1200, 
+        fireInitQueries: false,         
+        markOnlineOnConnect: false,   
+        groupMetadataCache: async (key) => {
+            return groupCache.get(key);
+        },
+        groupMetadataCacheSet: async (key, value) => {
+            groupCache.set(key, value);
+        },
+        getMessage: async (key) => {
+            return (await store.loadMessage?.(key.remoteJid, key.id)) || undefined;
          }
     });
     store.bind(bmm.ev);
@@ -68,6 +70,13 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
             console.log(`🤖 connection Open for ${phoneNumber}`);
             const added = addSession(phoneNumber, bmm);
             //console.log(`Session added: ${added ? '✅' : '❌'}`);
+            try {
+            // Record per-bot start time
+            const user_id_for_start = bmm.user?.id?.split(':')[0]?.split('@')[0];
+            if (user_id_for_start) {
+                botStartTimes[user_id_for_start] = Date.now();
+            }
+            } catch {}
               try {
             console.info(`🔄 Uploading pre-keys for ${phoneNumber}`);
             await bmm.uploadPreKeys();
@@ -88,6 +97,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
             const user_id = bmm.user?.id?.split(':')[0]?.split('@')[0];
             const user_lid = bmm.user?.lid ? bmm.user.lid.split(':')[0] : '';
             const user_name = bmm.user?.name || ''
+            if (user_id) botStartTimes[user_id] = Date.now();
             recordBotActivity({ user: authId, bot: phoneNumber, action: 'connection_open' });
             botInstances[user_id] = bmm;
             if (!userExists(user_id)) {
@@ -102,7 +112,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 onQr,
                 onPairingCode,
                 restartType: 'initial',
-                additionalInfo: `✨ Your bot is now online and ready to use!\n\n> If this is your first time using the bot, responses to your commands may be slightly delayed. This is normal — the bot is performing an initial sync with WhatsApp’s servers to load all necessary data. The process runs automatically and may take a short while to complete.`
+                additionalInfo: `✨ Your bot is now online and ready to use!\n\n> Syncing your WhatsApp data...`
                 });
             console.log(`✅ User ${user_id} saved to database`);
             }
@@ -112,17 +122,6 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 await  syncUserSession(authId, phoneNumber);
                 console.log(`🔄 Synced all sessions from SQLite to Supabase after 5 seconds for ${phoneNumber}`);
             }, 5000); // 5 seconds
-
-            // Send initial message after successful connection
-//             if (isInitialStart) {
-//                 const { sendRestartMessage } = require('./restart');
-//                 sendRestartMessage(authId, bmm, phoneNumber, {
-//                     type: 'initial',
-//                     additionalInfo: `✨ Your bot is now online and ready to use!
-
-// > If this is your first time using the bot, responses to your commands may be slightly delayed. This is normal — the bot is performing an initial sync with WhatsApp’s servers to load all necessary data. The process runs automatically and may take a short while to complete.`
-//                 }).catch(e => console.error('Failed to send initial message:', e.message));
-//             }
         }        
         if (connection === 'close') {
             recordBotActivity({ user: authId, bot: phoneNumber, action: 'connection_close' });
@@ -177,13 +176,6 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
                 onStatus?.('restarting', reason);
             }
         }
-        if (qr) {
-            onQr?.(qr);
-        }
-        
-        if (isNewLogin) {
-            console.log(`New login detected for ${phoneNumber}`);
-        }
     });
 
     bmm.ev.on('creds.update', saveCreds);
@@ -203,17 +195,61 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
 
     sessions.set(sessionKey, { bmm, cleanup });
 
-    bmm.ev.on('messages.upsert', async ({ messages, }) => {
-   //console.log(`📩 Received messages for ${phoneNumber}:`, messages);
-    const msg = messages[0];
-    if (!msg.message) return;
-    await handleMessage({
-        authId,
-        sock: bmm,
-        msg,
-        phoneNumber
+
+    let totalChats = 0;
+    let receivedChats = 0;
+    let syncDone = false;
+
+    bmm.ev.on('chats.set', ({ chats }) => {
+        totalChats = chats.length;
+        console.log(`Total chats expected: ${totalChats}`);
     });
-});
+
+   
+
+  // Track which percentages we've already notified
+    let notifiedPercents = new Set();
+
+    bmm.ev.on('messages.upsert', async ({ messages }) => {
+        //console.log('Received messages:', messages);
+
+        if (isInitialStart) {
+        
+        receivedChats++;
+        let percent = Math.min(100, Math.floor((receivedChats / totalChats) * 100));
+        console.log(`Sync progress: ${percent}%`);
+
+        // Milestones we want to notify
+        const milestones = [25, 50, 75, 100];
+
+        if (milestones.includes(percent) && !notifiedPercents.has(percent)) {
+            notifiedPercents.add(percent);
+
+            try {
+                const userJid = bmm.user?.id || `${phoneNumber}@s.whatsapp.net`;
+                await bmm.sendMessage(userJid, {
+                    text: `🔄 Sync Progress: ${percent}%\n\n> Your bot is still syncing your WhatsApp data.`
+                });
+                console.log(`Sent sync progress DM (${percent}%) to ${userJid}`);
+            } catch (error) {
+                console.error(`Failed to send sync progress DM (${percent}%):`, error);
+            }
+        }
+
+        if (!syncDone && percent >= 100) {
+            syncDone = true;
+            await bmm.sendMessage(`${phoneNumber}@s.whatsapp.net`, {
+                text: `🔄 Sync complete!\n\n> Your bot is now ready to use.`
+            });
+            console.log('Sync complete!');
+        }
+    }
+
+        const msg = messages[0];
+        if (!msg.message) return;
+        await handleMessage({ authId, sock: bmm, msg, phoneNumber });
+    });
+
 
 // 🔐 Monitor app-state.sync to detect when key is received
 bmm.ev.on('app-state.sync', async (update) => {
@@ -334,7 +370,6 @@ async function deleteBmmBot(authId, phoneNumber) {
     await deleteAllAntideleteSettings(phoneNumber);
     const { deleteAllAntilinkSettings} = require('../database/antilinkDb')
     await deleteAllAntilinkSettings(phoneNumber);
-    removeBot(phoneNumber);
     console.log(`Bmm bot for user ${phoneNumber} deleted successfully`);
     recordBotActivity({ user: authId, bot: phoneNumber, action: 'deleted' });
 }

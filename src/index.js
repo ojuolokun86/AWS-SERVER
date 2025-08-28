@@ -9,6 +9,9 @@ const { sendRestartMessage } = require('./main/restart');
 const { version } = require('../package.json');
 const fs = require('fs');
 const NOTIFICATION_FILE = path.join(__dirname, '../.update-notification');
+const { deleteBmmBot } = require('./main/main');
+const { db } = require('./database/database');
+const supabase = require('./supabaseClient');
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🛑 Unhandled Promise Rejection:', reason);
@@ -18,6 +21,151 @@ process.on('uncaughtException', (err) => {
   console.error('🔥 Uncaught Exception:', err);
 });
 
+// At the top of the file, make sure you have access to the global bot instances
+const { botInstances } = require('./utils/globalStore'); // Adjust the path as needed
+
+async function checkAndCleanupExpiredSubscriptions() {
+  try {
+      const now = new Date().toISOString();
+      //console.log(`🕒 Checking for expired subscriptions at ${now}...`);
+
+      // Get all expired subscriptions
+      const { data: expiredSubscriptions, error } = await supabase
+          .from('subscription_tokens')
+          .select('token_id, user_auth_id, subscription_level, expiration_date')
+          .lt('expiration_date', now);
+
+      if (error) {
+          console.error('❌ Error fetching expired subscriptions:', error);
+          return;
+      }
+
+      if (!expiredSubscriptions || expiredSubscriptions.length === 0) {
+          //console.log('✅ No expired subscriptions found');
+          return;
+      }
+
+      //console.log(`⚠️ Found ${expiredSubscriptions.length} expired subscriptions. Cleaning up...`);
+
+      // Process each expired subscription
+      for (const sub of expiredSubscriptions) {
+          //console.log(`🔄 Processing subscription for user_auth_id: ${sub.user_auth_id}`);
+          function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+          try {
+             // Get all sessions for this auth_id
+              // console.log('🔍 Debug: All sessions in database:');
+              // const allSessions = db.prepare('SELECT auth_id, phone_number FROM sessions').all();
+              // console.log(allSessions);
+              
+              // And modify the sessions query to:
+              // Update the sessions query to trim auth_id
+                const sessions = db.prepare(`
+                  SELECT * FROM sessions 
+                  WHERE TRIM(auth_id) = ?
+                `).all(String(sub.user_auth_id).trim()); // Also trim the input value
+
+              // Process each session
+              for (const session of sessions) {
+                  const { phone_number } = session;
+                  //console.log(`  📱 Processing session for phone: ${phone_number}`);
+
+                  // Check if there's an active bot instance
+                  const botInstance = botInstances[phone_number];
+                  if (botInstance) {
+                      try {
+                          // Send notification
+                          //console.log(`    📢 Sending expiry notification to ${phone_number}`);
+                          await botInstance.sendMessage(
+                              phone_number.includes('@') ? phone_number : `${phone_number}@s.whatsapp.net`,
+                              { text: "⚠️ Your subscription has expired. Your bot session will be terminated." }
+                          );
+                          await delay(3000);                          
+                          // Delete the bot instance
+                          //console.log(`    🗑️ Deleting bot instance for ${phone_number}`);
+                          await deleteBmmBot(sub.user_auth_id.toString(), phone_number);
+                          delete botInstances[phone_number];
+                      } catch (error) {
+                          console.error(`    ❌ Error processing bot ${phone_number}:`, error.message);
+                      }
+                  }
+
+                  // Delete the session from database
+                  try {
+                      //console.log(`    🗑️ Deleting session for ${phone_number}`);
+                      await deleteBmmBot(sub.user_auth_id.toString(), phone_number);
+                  } catch (error) {
+                      console.error(`    ❌ Error deleting session ${phone_number}:`, error.message);
+                  }
+              }
+          } catch (error) {
+              console.error(`❌ Error processing subscription ${sub.token_id}:`, error);
+          }
+      }
+
+      console.log('✅ Completed expired subscription cleanup');
+  } catch (error) {
+      console.error('❌ Fatal error in subscription cleanup:', error);
+  }
+}
+// Check for expired subscriptions every 12 hours (12 * 60 * 60 * 1000 = 43200000 ms)
+const SUBSCRIPTION_CHECK_INTERVAL =   12 * 60 * 60 * 1000;
+setInterval(checkAndCleanupExpiredSubscriptions, SUBSCRIPTION_CHECK_INTERVAL);
+
+// Also run once on startup
+checkAndCleanupExpiredSubscriptions().catch(console.error);
+
+// Simple semantic version classifier: returns 'major' | 'minor' | 'patch' | 'unknown'
+function normVer(v) {
+  if (!v) return '';
+  return String(v).trim().replace(/^v/i, '');
+}
+
+function classifySemver(prev, curr) {
+  try {
+    const p = normVer(prev);
+    const c = normVer(curr);
+    if (!p || !c) return 'unknown';
+    const [pM, pN, pP] = p.split('.').map(n => parseInt(n, 10));
+    const [cM, cN, cP] = c.split('.').map(n => parseInt(n, 10));
+    if ([pM, pN, pP, cM, cN, cP].some(Number.isNaN)) return 'unknown';
+    if (cM !== pM) return 'major';
+    if (cN !== pN) return 'minor';
+    if (cP !== pP) return 'patch';
+    return 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+// Persisted last-known version storage (in src/.last_version)
+const LAST_VERSION_FILE = __dirname + '/.last_version';
+function readLastVersion() {
+  try {
+    if (fs.existsSync(LAST_VERSION_FILE)) {
+      return fs.readFileSync(LAST_VERSION_FILE, 'utf8').trim();
+    }
+  } catch {}
+  return '';
+}
+function writeLastVersion(ver) {
+  try {
+    fs.writeFileSync(LAST_VERSION_FILE, String(ver || '').trim(), 'utf8');
+  } catch (e) {
+    console.error('⚠️ Failed to write LAST_VERSION_FILE:', e.message);
+  }
+}
+
+// Map update type to a leading emoji
+function emojiForUpdateType(type) {
+  switch ((type || 'unknown').toLowerCase()) {
+    case 'major': return '🧨'; // big / breaking changes
+    case 'minor': return '✨'; // new features
+    case 'patch': return '🩹'; // fixes
+    default: return '🔄';
+  }
+}
 
 async function checkForUpdateNotifications() {
   try {
@@ -34,9 +182,13 @@ async function checkForUpdateNotifications() {
           for (const [phoneNumber, sock] of Object.entries(activeSessions)) {
               try {
                   console.log(`📤 Sending update to ${phoneNumber}...`);
+                  const newVersion = notification.version;
+                  const prevVersion = notification.previousVersion || notification.prevVersion || notification.oldVersion || readLastVersion();
+                  const updateType = classifySemver(prevVersion, newVersion);
+                  const lead = emojiForUpdateType(updateType);
                   await sendRestartMessage(sock, phoneNumber, {
                       type: 'deployment',
-                      additionalInfo: `🚀 Bot has been updated to version ${notification.version}!`
+                      additionalInfo: `${lead} Bot has been updated to version ${newVersion}!${prevVersion ? ` (from ${prevVersion})` : ''}\n> NEW VERSION: ${newVersion}\n> PREVIOUS VERSION: ${prevVersion}\n\n> UPDATE TYPE: ${updateType.toUpperCase()}`
                   });
                   console.log(`✅ Update sent to ${phoneNumber}`);
               } catch (error) {
@@ -47,6 +199,9 @@ async function checkForUpdateNotifications() {
           // Delete the notification file after processing
           fs.unlinkSync(NOTIFICATION_FILE);
           console.log('✅ Update notification processed and file removed');
+
+          // Persist the latest version for next comparison
+          try { writeLastVersion(notification.version); } catch {}
       }
   } catch (error) {
       console.error('❌ Error in checkForUpdateNotifications:', error.message);
@@ -60,9 +215,10 @@ setInterval(() => {
 
 // Initial check
 checkForUpdateNotifications().catch(console.error);
+
 // Scheduled sync every 2 hours
 const { syncUserSettingsToSupabase } = require('./database/supabaseDb');
-const { db } = require('./database/database');
+
 function syncAllUsersToSupabase() {
   // Get all unique authIds from users table
   const authIds = db.prepare('SELECT DISTINCT auth_id FROM users').all().map(r => r.auth_id);
