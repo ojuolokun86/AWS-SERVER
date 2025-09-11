@@ -8,6 +8,11 @@ const { incrementGroupUserStat } = require('./features/groupStats');
 const globalStore = require('../utils/globalStore');
 const sendToChat = require('../utils/sendToChat');
 const handleNewsletterAutoReact = require('./features/newsletterAutoReact');
+
+
+/*
+* message handler
+*/
 async function handleIncomingMessage({ authId, sock, msg, phoneNumber }) {
   let from;
   let botId; 
@@ -44,7 +49,7 @@ if (msg.key?.remoteJid?.endsWith('@g.us') && msg.key?.participant) {
   // ⚙️ Check for command
   const userPrefix = await getUserPrefix(botId);
   if (textMsg.startsWith(userPrefix)) {
-    await execute({ authId, sock, msg, textMsg, phoneNumber: botPhoneNumber });
+    await execute({ authId, sock, msg, textMsg, phoneNumber: phoneNumber, authId: authId });
   }
 }
 catch (err) {

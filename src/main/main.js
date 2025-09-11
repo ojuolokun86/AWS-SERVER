@@ -11,6 +11,7 @@ const sessions = new Map(); // Map<authId:phoneNumber, { bmm, cleanup }>
 const { botInstances, botStartTimes } = require('../utils/globalStore')
 const deletedSessions = new Set(); // To prevent restart of deleted bots
 const { makeInMemoryStore } = require('@rodrigogs/baileys-store')
+//const makeInMemoryStore = require('@whiskeysockets/baileys/lib/Store/make-in-memory-store').default;
 const store = makeInMemoryStore({});
 const { recordBotActivity } = require('../database/database');
 const { addSession, removeSession } = require('../utils/sessionManager');
@@ -34,6 +35,7 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
 
     const { version } = await fetchLatestBaileysVersion();
     const groupCache = new NodeCache({ stdTTL: 60 * 60, useClone: false });
+    // Create the socket with store integration
     const bmm = makeWASocket({
         version,
         auth: {
@@ -46,12 +48,15 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         generateHighQualityLinkPreview: true,
         receivedPendingNotifications: true,
         appStateSyncIntervalMs: 60000,
-        keepAliveIntervalMs: 30000, 
-        connectTimeoutMs: 2000000, 
-        emitOwnEvents: true, 
-        linkPreviewImageThumbnailWidth: 1200, 
-        fireInitQueries: false,         
-        markOnlineOnConnect: false,   
+        keepAliveIntervalMs: 30000,
+        connectTimeoutMs: 10000,
+        reconnectIntervalMs: 5000,
+        emitOwnEvents: true,
+        linkPreviewImageThumbnailWidth: 1200,
+        fireInitQueries: false,
+        markOnlineOnConnect: false,
+        // Store the store reference directly on the socket for easier access
+        store: store,
         groupMetadataCache: async (key) => {
             return groupCache.get(key);
         },
@@ -60,9 +65,17 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
         },
         getMessage: async (key) => {
             return (await store.loadMessage?.(key.remoteJid, key.id)) || undefined;
-         }
+        }
     });
+    
+    // Bind the store to the event emitter
     store.bind(bmm.ev);
+    
+    // Make sure the store is accessible in multiple ways for compatibility
+    bmm.store = store;
+    if (bmm.ev) {
+        bmm.ev.store = store;
+    }
     bmm.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr, isNewLogin } = update;
         
@@ -247,9 +260,16 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
 
         const msg = messages[0];
         if (!msg.message) return;
-        await handleMessage({ authId, sock: bmm, msg, phoneNumber });
+        await handleMessage({ authId, sock: bmm, msg, phoneNumber,});
     });
 
+    bmm.ev.on('messaging-history.set', async ({ messages, chats, contacts }) => {
+        console.log(`📥 Synced ${messages.length} messages from history`);
+        store.loadMessages = (jid, count) => {
+            return messages.filter(m => m.key.remoteJid === jid).slice(-count);
+        };
+    });
+    
 
 // 🔐 Monitor app-state.sync to detect when key is received
 bmm.ev.on('app-state.sync', async (update) => {
