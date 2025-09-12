@@ -20,8 +20,7 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd ~/AWS-SERVER
-            git fetch --all
-            git reset --hard origin/main   # <— ensures no dirty files
+            git pull origin main
             npm install @whiskeysockets/baileys@latest
             npm install                        
             pm2 restart aws-v2 || pm2 start src/index.js --name aws-v2
