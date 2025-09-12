@@ -1,5 +1,6 @@
 const sendToChat = require('../../utils/sendToChat');
 const { getUserSettings } = require('../../utils/settings');
+const{ isBotOwner } = require('../../database/database')
 module.exports = async function settingsCommand(authId, sock, msg) {
   const from = msg.key.remoteJid;
   const sender = msg.key.participant || msg.key.remoteJid;
