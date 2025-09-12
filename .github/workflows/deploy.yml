@@ -22,8 +22,8 @@ jobs:
             cd ~/AWS-SERVER
             git fetch --all
             git reset --hard origin/main   # <— ensures no dirty files
-            npm ci                          # installs from lockfile, no rewrite
             npm install @whiskeysockets/baileys@latest
+            npm install                        
             pm2 restart aws-v2 || pm2 start src/index.js --name aws-v2
             sleep 60
             node scripts/notifyUpdate.js
