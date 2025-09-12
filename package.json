@@ -19,7 +19,8 @@
     "supabase",
     "ai",
     "automation",
-    "express"
+    "express",
+    "moment-timezone"
   ],
   "author": "Toluwalase Ojabineni",
   "license": "ISC",

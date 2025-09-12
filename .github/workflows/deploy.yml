@@ -20,11 +20,11 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd ~/AWS-SERVER
-            git pull origin main
+            git fetch --all
+            git reset --hard origin/main   # <— ensures no dirty files
+            npm ci                          # installs from lockfile, no rewrite
             npm install @whiskeysockets/baileys@latest
-            npm install
             pm2 restart aws-v2 || pm2 start src/index.js --name aws-v2
-            # Wait for the bot to fully initialize
             sleep 60
-            # Send update notifications with the correct version
             node scripts/notifyUpdate.js
+  
