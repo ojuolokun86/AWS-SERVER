@@ -1,8 +1,8 @@
-const { makeWASocket, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, encodeBase64EncodedStringForUpload, } = require('@whiskeysockets/baileys');
+const { makeWASocket, DisconnectReason, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
 const path = require('path');
 const Boom = require('@hapi/boom');
 const pino = require('pino');
-const { saveSessionToSupabase, loadSessionFromSupabase, deleteSessionFromSupabase } = require('../database/supabaseSession');
+const { saveSessionToSupabase, deleteSessionFromSupabase } = require('../database/supabaseSession');
 const { useSQLiteAuthState } = require('../database/sqliteAuthState');
 const  handleMessage  = require('../handler/messageHandler');
 const { saveUserToDb, userExists } = require('../database/database');
@@ -32,29 +32,27 @@ async function startBmmBot({ authId, phoneNumber, country, pairingMethod, onStat
     
     // Use SQLite for session persistence
     const { state, saveCreds } = await useSQLiteAuthState(authId, phoneNumber);
-
-    const { version } = await fetchLatestBaileysVersion();
     const groupCache = new NodeCache({ stdTTL: 60 * 60, useClone: false });
     // Create the socket with store integration
     const bmm = makeWASocket({
-        version,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
         },
-        browser: ['Windows', 'Chrome', '128.0.6613.137'],
+        browser: Browsers.macOS('Chrome'),
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         generateHighQualityLinkPreview: true,
         receivedPendingNotifications: true,
         appStateSyncIntervalMs: 60000,
         keepAliveIntervalMs: 30000,
-        connectTimeoutMs: 10000,
         reconnectIntervalMs: 5000,
         emitOwnEvents: true,
         linkPreviewImageThumbnailWidth: 1200,
         fireInitQueries: false,
         markOnlineOnConnect: false,
+        connectTimeoutMs: 60000,            // handshake
+        defaultQueryTimeoutMs: 60000,
         // Store the store reference directly on the socket for easier access
         store: store,
         groupMetadataCache: async (key) => {

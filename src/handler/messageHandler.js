@@ -8,6 +8,8 @@ const { incrementGroupUserStat } = require('./features/groupStats');
 const globalStore = require('../utils/globalStore');
 const sendToChat = require('../utils/sendToChat');
 const handleNewsletterAutoReact = require('./features/newsletterAutoReact');
+const { handleGameCommand, handleReply, handleWordChain, games } = require('./command/game');
+const { handleTrivia, handleTriviaReply } = require('./command/triviaGame');
 
 
 /*
@@ -51,11 +53,24 @@ if (msg.key?.remoteJid?.endsWith('@g.us') && msg.key?.participant) {
   if (textMsg.startsWith(userPrefix)) {
     await execute({ authId, sock, msg, textMsg, phoneNumber: phoneNumber, authId: authId });
   }
+    // Handle game replies and active game messages
+  const game = games.get(from);
+    if (game?.isActive) {
+            // Handle words during active game
+      await handleWordChain(sock, msg, textMsg);
+      } else if (msg.message?.extendedTextMessage?.text) {
+            // Handle game join replies during registration
+      const isWordChainReply = await handleReply(sock, msg);
+        if (!isWordChainReply) {
+            // If not word chain, try trivia game
+            await handleTriviaReply(sock, msg);
+        }
+    }
 }
 catch (err) {
-  await sendToChat(sock, from, {
-    message: '❌ Message handler error: ' + err + 'Please use report command with the error message to report this issue.'
-  });
+  // await sendToChat(sock, from, {
+  //   message: '❌ Message handler error: ' + err + 'Please use report command with the error message to report this issue.'
+  // });
   console.error(`[ERROR] Message handler failed!`, {
     error: err,
     msg: msg,

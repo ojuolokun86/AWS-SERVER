@@ -21,7 +21,7 @@ jobs:
           script: |
             cd ~/AWS-SERVER
             git pull origin main
-            npm install @whiskeysockets/baileys@latest
+            npm install @whiskeysockets/baileys@6.7.19
             npm install                        
             pm2 restart aws-v2 || pm2 start src/index.js --name aws-v2
             sleep 60

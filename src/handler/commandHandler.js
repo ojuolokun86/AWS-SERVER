@@ -61,6 +61,9 @@ const pingCommand = require('./command/ping');
 const timeCommand = require('./command/timeCommand');
 const {destroyGroupCommand} = require('./command/destroyGroup');
 const { handleFootballCommand } = require('./command/football');
+const { warnCommand } = require('./command/warn');
+const { handleGameCommand } = require('./command/game');
+const { handleTrivia } = require('./command/triviaGame');
 
 
 
@@ -170,9 +173,8 @@ async function execute({ authId, sock, msg, textMsg, phoneNumber }) {
       case 'resetwarn':
         await resetWarnCommand(sock, msg, textMsg);
         break;
-      case 'echo':
-        const echoText = args.join(' ').trim();
-        await sendToChat(sock, from, { message: echoText || '🗣️ Echo what?' });
+      case 'warn':
+        await warnCommand(sock, msg, args);
         break;
       case 'warnlist':
       case 'listwarn':
@@ -339,6 +341,13 @@ async function execute({ authId, sock, msg, textMsg, phoneNumber }) {
             userId: phoneNumber,  // Use phoneNumber as the user ID
           });
           break;
+       // Add game command to switch case
+      case 'game':
+        await handleGameCommand(sock, msg, args,);
+        break;
+      case 'trivia':
+        await handleTrivia(sock, msg, args);
+        break;
       default:
         await sendToChat(sock, from, {
           message: `❌ Unknown command: *${command}*\nType *${getUserPrefix(phoneNumber)}menu* for a list of commands.`
@@ -347,9 +356,9 @@ async function execute({ authId, sock, msg, textMsg, phoneNumber }) {
     }
   } catch (err) {
     console.error('❌ Command error:', err);
-    await sendToChat(sock, from, {
-      message: `❌ Error: ${err.message || err.toString()}`
-    });
+    // await sendToChat(sock, from, {
+    //   message: `❌ Error: ${err.message || err.toString()}`
+    // });
   }
 }
 

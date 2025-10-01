@@ -1,6 +1,7 @@
 // src/commands/commandRegistry.js
 const { version } = require('../../../package.json');
 const { description } = require('./report');
+const { categories } = require('./triviaGame');
 
 const commandRegistry = {
     // Bot Control
@@ -86,6 +87,19 @@ const commandRegistry = {
         usage: 'unlockinfo',
         category: 'Group',
         adminOnly: true
+    },
+    'warn': {
+        description: 'Warn a user in a group by mention or reply to their message',
+        usage: 'warn @user | warn (reply to message)',
+        category: 'Group',
+        adminOnly: true
+    },
+
+    'resetwarn': {
+        description: 'Reset warnings for a user or all',
+        usage: 'resetwarn @user | resetwarn all',
+        category: 'Group',
+        ownerOnly: true
     },
     'add': {
         description: 'Add a user to the group',
@@ -480,6 +494,19 @@ const commandRegistry = {
     usage: 'yt [, video|audio|search] [song name or link]',
     category: 'Media'
 },
+
+    // Games
+    'game': {
+        description: 'Start a word chain game in group',
+        usage: 'game wordchain',
+        category: 'Game',
+    },
+
+    'trivia': {
+        description: 'start trivia Game and choosing difficulty',
+        usage: 'trivia start category level',
+        category: 'Game',
+    },
 
 
 

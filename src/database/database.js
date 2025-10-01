@@ -31,16 +31,6 @@ db.prepare(`
   )
 `).run();
 
-// 🚨 Antilink Warnings Table
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS antilink_warns (
-    group_id TEXT,
-    bot_id TEXT,
-    user_jid TEXT,
-    warn_count INTEGER DEFAULT 0,
-    PRIMARY KEY (group_id, bot_id, user_jid)
-  )
-`).run();
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS antidelete_settings (

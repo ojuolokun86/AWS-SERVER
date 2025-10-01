@@ -50,12 +50,18 @@ const getMainMenu = (
 📦 *GROUP MANAGEMENT*
 
 > 📑 listgroup → List all groups
-> 🏷️ tag → Tag a user
+> 🏷️ tag → hide tag mention user in way that they wont see name
 > 📢 tagall → Mention all members
-> 🔇 mute / 🔊 unmute → Silence or activate chat
-> 🔐 lockinfo / 🔓 unlockinfo → Lock or unlock group info
-> ➕ add / ➖ kick → Add or remove members
-> ⬆️ promote / ⬇️ demote → Manage roles
+> 🔇 mute → mute all chat to admin only
+> 🔊 unmute → Unmute chat to allow all member to chat
+> 🔐 lockinfo → Lock Group info
+> 🔓 unlockinfo →  unlock group info
+> ➕ add → Add members
+> ➖ kick → remove members
+> 🤖 warn →  Warn a user in a group by mention or reply to their message
+> ®️ resetwarn → Reset warnings
+> ⬆️ promote →  Promote to admin
+> ⬇️ demote → Demote from admin
 > 📊 poll → Create a poll
 > 🔗 group link → Fetch invite link
 > 📈 group stats → Display group stats
@@ -81,6 +87,10 @@ const getMainMenu = (
 ⚽ *SPORTS*
 
 > ⚽ football → Football commands | Get football news, search for teams, follow teams, list your followed teams
+
+🎮 *GAME*
+> 🎮 game wordchain → Start a word chain game in group
+> 🎯 trivia → start Trivia Game
 
 🔧 *UTILITIES*
 
